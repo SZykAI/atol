@@ -1,6 +1,6 @@
 {
   "name": "wyspa",
-  "version": "4.0.1",
+  "version": "4.1.0",
   "description": "Atol — dynamiczna wyspa na górze ekranu Windows (muzyka jak w iPhonie, bateria, głośność, procesor, minutnik). Studio SZykAI.",
   "main": "main.js",
   "author": "studio SZykAI",
@@ -9,7 +9,7 @@
     "start": "electron .",
     "test": "node --test",
     "ikona": "electron build/generuj-ikone.js",
-    "buduj":"electron-builder --win portable",
+    "buduj": "electron-builder --win portable",
     "buduj:instalator": "electron-builder --win nsis"
   },
   "build": {
