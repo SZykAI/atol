@@ -1,0 +1,249 @@
+/* Wyspa — wygląd pastylki.
+ * Rozmiar i kształt pastylki NIE są tu ustawiane: liczy je sprężyna w wyspa.js i ustawia clip-path.
+ * Tu są tylko: wygląd treści i płynne przenikanie warstw (opacity + transform). */
+:root {
+  --zielony: #30d158;
+  --czerwony: #ff453a;
+  --zolty: #ffd60a;
+  --pomarancz: #ff9f0a;
+  --niebieski: #0a84ff;
+  --fiolet: #bf5af2;
+  --szary: #8e8e93;
+  --viz-kolor: #f2f2f7;                 /* kolor słupków; wyspa.js bierze go z okładki */
+  --przejscie-wej: cubic-bezier(.32, 1.25, .5, 1);   /* lekkie przestrzelenie przy wchodzeniu treści */
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;           /* okno jest przezroczyste */
+  user-select: none;
+  cursor: default;
+  font-family: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font-family: inherit; }
+svg { width: 100%; height: 100%; display: block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+svg .wyp-ik { fill: currentColor; stroke: none; }
+
+/* ---------- scena: widoczność całej wyspy (opacity/transform ustawia wyspa.js) ---------- */
+#scena {
+  position: absolute; inset: 0;
+  transform-origin: 50% 8px;
+  opacity: 0;
+  will-change: transform, opacity;
+  /* Cień rysuje filtr na rodzicu: drop-shadow idzie za WYCIĘTYM kształtem (clip-path wyspy), więc pasuje
+     i do pastylki, i do notcha z uszkami. Zwykły box-shadow obciąłby clip-path. */
+  filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0)) drop-shadow(0 0 0 rgba(0, 0, 0, 0));
+  transition: filter .45s ease;
+}
+/* rozwinięta wyspa: lekki cień dookoła */
+#scena.cien {
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, .45)) drop-shadow(0 0 2px rgba(0, 0, 0, .35));
+}
+
+/* ---------- pastylka ---------- */
+#wyspa {
+  position: absolute;
+  left: 10px; top: 8px;
+  width: 420px; height: 480px;        /* stałe "płótno"; widoczny fragment wycina clip-path */
+  background: #000;
+  clip-path: inset(0 149px 446px 149px round 17px);
+  will-change: clip-path;
+  contain: layout paint;
+}
+
+/* Warstwy treści (zwinięta / powiadomienie / rozwinięta) są w DOM cały czas, w stałej skali 1.
+ * Animuje się każdy element oznaczony data-a osobno (wyspa.js: opacity + blur + skala + przesunięcie,
+ * kolejno co 45 ms) — razem z kształtem wyspy, a nie po jego zakończeniu.
+ * Rodzic zawierający tekst nigdy nie jest skalowany, więc tekst się nie rozciąga. */
+.kompakt, .powiad, .rozw { position: absolute; top: 0; pointer-events: none; }
+.aktywna { pointer-events: auto; }
+[data-a] { will-change: opacity, transform, filter; }
+/* elementy nieaktywnej warstwy: schowane (to także stan końcowy animacji wyjścia) */
+.kompakt:not(.aktywna) [data-a],
+.powiad:not(.aktywna) [data-a],
+.rozw:not(.aktywna) [data-a] { opacity: 0; filter: blur(6px); transform: scale(.9); }
+
+/* ---------- styl NOTCH: płótno przy samej krawędzi ekranu, treść lekko niżej (kształt jest o 2 px wyższy) ---------- */
+body.notch #wyspa { top: 0; }
+body.notch .kompakt, body.notch .powiad { top: 1px; }
+body.notch .rozw { padding-top: 20px; }
+
+/* ===================== zwinięta ===================== */
+.kompakt { left: 0; width: 420px; height: 34px; }
+
+/* lewa i prawa część jadą razem z krawędziami pastylki (translateX ustawia wyspa.js) */
+.k-lewa { position: absolute; left: 0; top: 5px; height: 24px; display: flex; align-items: center; will-change: transform; }
+.k-prawa {
+  position: absolute; right: 0; top: 0; height: 34px;
+  display: flex; align-items: center; gap: 9px;
+  will-change: transform;
+}
+
+.okl.mala { width: 24px; height: 24px; border-radius: 7px; }
+.k-ikona-timer { display: none; width: 22px; height: 22px; padding: 1px; color: var(--pomarancz); }
+.z-timer:not(.z-muzyka) .k-ikona-timer { display: block; }
+.z-timer:not(.z-muzyka) #k-okladka { display: none; }
+.z-muzyka:not(.z-timer) .k-timer, .z-timer:not(.z-muzyka) #k-viz { display: none; }
+#wyspa:not(.z-timer) .k-timer { display: none; }
+
+.k-timer {
+  font-size: 13.5px; font-weight: 600; color: var(--pomarancz);
+  font-variant-numeric: tabular-nums; letter-spacing: .2px;
+}
+
+/* ---------- wizualizator: słupki skalowane w pionie (scaleY ustawia wyspa.js) ---------- */
+.viz { display: inline-flex; align-items: center; gap: 2.5px; height: 14px; flex: none; }
+.viz i {
+  display: block; width: 3px; height: 100%; border-radius: 2px;
+  background: var(--viz-kolor);
+  transform: scaleY(.18);
+  will-change: transform;
+  transition: background-color .6s ease;
+}
+.viz.duzy { height: 20px; gap: 3px; }
+.viz.duzy i { width: 3.5px; }
+
+/* ---------- okładka: dwie warstwy do płynnej podmiany obrazka ---------- */
+.okl {
+  position: relative; flex: none; overflow: hidden;
+  background: linear-gradient(135deg, #2c2c34, #17171c);
+  display: grid; place-items: center;
+  isolation: isolate;
+}
+.okl-w {
+  position: absolute; inset: 0;
+  background: center / cover no-repeat;
+  opacity: 0;
+  will-change: opacity, transform;
+}
+.okl-zast { width: 55%; height: 55%; color: rgba(255, 255, 255, .45); position: relative; z-index: -1; }
+.okl.ma-obraz .okl-zast { opacity: 0; }
+
+/* ===================== powiadomienie ===================== */
+.powiad {
+  left: 50%; width: 344px; height: 68px; margin-left: -172px;
+  display: flex; align-items: center; gap: 13px;
+  padding: 0 22px 0 14px;
+}
+.p-tekst .wyp { transition: transform .18s ease-out, background-color .4s; }   /* pasek głośności nadąża za zmianą */
+
+.p-ikona {
+  flex: none; width: 40px; height: 40px; padding: 9px; border-radius: 50%;
+  background: rgba(255, 255, 255, .1); color: var(--szary);
+}
+.p-tekst { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.p-tekst strong { font-size: 14.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.p-tekst span { font-size: 12.5px; color: var(--szary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* flex: none — ogólna reguła .tor (niżej) ma flex: 1, co w pionowym układzie daje wysokość 0;
+   selektor ".p-tekst .p-tor" jest mocniejszy, więc wygrywa niezależnie od kolejności w pliku */
+.p-tekst .p-tor { display: none; flex: none; margin-top: 5px; }
+.p-tekst .p-tor.widoczny { display: block; }
+
+.p-ikona.zegar { background: rgba(255, 159, 10, .18); color: var(--pomarancz); }
+.p-ikona.bateria { background: rgba(255, 214, 10, .16); color: var(--zolty); }
+.p-ikona.bateria.krytyczna { background: rgba(255, 69, 58, .2); color: var(--czerwony); }
+.p-ikona.glosnik { background: rgba(10, 132, 255, .2); color: var(--niebieski); }
+.p-ikona.piorun { background: rgba(48, 209, 88, .18); color: var(--zielony); }
+.p-ikona.piorun.koniec { background: rgba(255, 255, 255, .1); color: #d1d1d6; }
+
+/* ===================== rozwinięta ===================== */
+.rozw {
+  left: 50%; width: 372px; margin-left: -186px;
+  padding: 18px 20px 18px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+/* ---------- karta multimediów ---------- */
+.karta-gora { display: flex; align-items: center; gap: 14px; }
+.okl.duza { width: 62px; height: 62px; border-radius: 15px; }
+.okl.duza .okl-zast { width: 42%; height: 42%; }
+.opis { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.opis strong, .opis span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; will-change: opacity, transform; }
+.opis strong { font-size: 15.5px; font-weight: 600; letter-spacing: -.1px; }
+.opis span { font-size: 13.5px; color: var(--szary); }
+.viz.duzy { align-self: flex-start; margin-top: 6px; }
+
+.postep {
+  display: flex; align-items: center; gap: 10px; margin-top: 14px;
+  font-size: 11.5px; color: var(--szary); font-variant-numeric: tabular-nums;
+}
+.postep span { flex: none; min-width: 34px; }
+.postep span:last-child { text-align: right; }
+.postep.bez-dlugosci { visibility: hidden; }
+
+.tor { flex: 1; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .18); overflow: hidden; }
+.wyp {
+  height: 100%; width: 100%; border-radius: 3px; background: #fff;
+  transform-origin: 0 50%; transform: scaleX(0);
+}
+
+.sterowanie { display: flex; justify-content: center; align-items: center; gap: 36px; margin-top: 8px; }
+.s-btn {
+  width: 44px; height: 44px; padding: 10px; border: 0; border-radius: 50%;
+  background: transparent; color: #fff; cursor: pointer;
+  transition: background-color .15s, transform .2s var(--przejscie-wej), opacity .2s;
+}
+.s-btn svg { fill: currentColor; stroke: none; }
+.s-btn:hover { background: rgba(255, 255, 255, .1); }
+.s-btn:active { transform: scale(.86); }
+.s-btn:disabled { opacity: .28; cursor: default; background: transparent; transform: none; }
+.s-btn.glowny { width: 52px; height: 52px; padding: 11px; }
+.s-btn.glowny span { display: block; width: 100%; height: 100%; }
+.s-btn.glowny .ik-pauza { display: none; }
+.s-btn.glowny.gra .ik-play { display: none; }
+.s-btn.glowny.gra .ik-pauza { display: block; }
+
+/* ---------- kafelki ---------- */
+.kafle { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
+.kafel {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 11px 12px 12px; border-radius: 18px;
+  background: rgba(255, 255, 255, .075);
+}
+.kafel .tor { flex: none; height: 4px; }
+.kafel-ikona { width: 18px; height: 18px; color: var(--szary); flex: none; }
+.kafel-tekst { display: flex; flex-direction: column; gap: 1px; }
+.etykieta { font-size: 11px; color: var(--szary); letter-spacing: .2px; }
+.kafel-tekst strong { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kafel-tekst strong.brak { font-size: 12.5px; font-weight: 400; color: var(--szary); }
+.kafel-tekst small { font-size: 11px; font-weight: 400; color: var(--szary); margin-left: 4px; }
+.kafel[data-modul="bateria"] .kafel-ikona { color: var(--zielony); }
+.kafel[data-modul="glosnosc"] .kafel-ikona { color: var(--niebieski); }
+.kafel[data-modul="procesor"] .kafel-ikona { color: var(--fiolet); }
+.wyp { transition: background-color .4s; }
+
+/* ---------- minutnik ---------- */
+.minutnik {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px 9px 12px; border-radius: 18px;
+  background: rgba(255, 255, 255, .075);
+}
+.minutnik .kafel-ikona { color: var(--pomarancz); }
+.m-czas { flex: 1; font-size: 14.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.minutnik.dziala .m-czas { color: var(--pomarancz); font-size: 17px; }
+.minutnik.koniec .m-czas { color: var(--zielony); }
+.m-chipy { display: flex; align-items: center; gap: 5px; }
+.m-min { font-size: 11.5px; color: var(--szary); margin-left: 2px; }
+.minutnik .stop { display: none; }
+.minutnik.dziala .m-chipy { display: none; }
+.minutnik.dziala .stop { display: block; }
+
+.chip {
+  min-width: 32px; padding: 5px 9px; border-radius: 999px; cursor: pointer;
+  border: 0; background: rgba(255, 255, 255, .1);
+  color: #f2f2f7; font-size: 12.5px; font-weight: 600;
+  transition: background-color .15s, transform .2s var(--przejscie-wej);
+}
+.chip:hover { background: rgba(255, 255, 255, .18); }
+.chip:active { transform: scale(.9); }
+.chip.stop { background: rgba(255, 159, 10, .2); color: var(--pomarancz); padding: 5px 12px; }
+.chip.stop:hover { background: rgba(255, 159, 10, .3); }
+

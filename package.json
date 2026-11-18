@@ -1,0 +1,63 @@
+{
+  "name": "wyspa",
+  "version": "4.0.1",
+  "description": "Atol — dynamiczna wyspa na górze ekranu Windows (muzyka jak w iPhonie, bateria, głośność, procesor, minutnik). Studio SZykAI.",
+  "main": "main.js",
+  "author": "studio SZykAI",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "ikona": "electron build/generuj-ikone.js",
+    "buduj":"electron-builder --win portable",
+    "buduj:instalator": "electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "pl.wyspa.app",
+    "productName": "Atol",
+    "copyright": "© 2026 studio SZykAI",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "lib/**/*",
+      "okna/**/*",
+      "skrypty/**/*",
+      "build/icon.png",
+      "build/tray.png"
+    ],
+    "asarUnpack": [
+      "**/node_modules/loudness/**",
+      "skrypty/**"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "portable"
+      ]
+    },
+    "portable": {
+      "artifactName": "Atol.exe"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Atol",
+      "include": "build/instalator.nsh",
+      "artifactName": "Atol-Instalator.exe"
+    }
+  },
+  "dependencies": {
+    "loudness": "^0.4.2",
+    "systeminformation": "^5.33.23"
+  },
+  "devDependencies": {
+    "electron": "^45.3.4",
+    "electron-builder": "^26.18.0"
+  }
+}

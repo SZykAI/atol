@@ -1,0 +1,7 @@
+# notatki z pracy (zawierają prywatne ścieżki) — tylko lokalnie
+CLAUDE.md
+node_modules/
+dist/
+reklama/podglad/
+reklama/muzyka.wav
+reklama/*.mp4

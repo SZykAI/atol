@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Atol</title>
+  <link rel="stylesheet" href="wyspa.css">
+</head>
+<body>
+  <!-- scena: pojawianie się / znikanie całej wyspy (start, pełny ekran, wyłączenie) -->
+  <div id="scena">
+    <!-- wyspa: stały czarny prostokąt; widoczny kształt pastylki wycina clip-path (liczony w wyspa.js) -->
+    <div id="wyspa" data-stan="pusta" role="button" aria-label="Wyspa" aria-expanded="false">
+
+      <!-- ===== zwinięta: okładka po lewej, minutnik + wizualizator po prawej ===== -->
+      <div class="kompakt" id="kompakt" aria-hidden="true">
+        <div class="k-lewa" id="k-lewa">
+          <div class="okl mala" id="k-okladka" data-a><i class="okl-w"></i><i class="okl-w"></i><span class="okl-zast" data-ikona="nuta"></span></div>
+          <span class="k-ikona-timer" data-ikona="zegar" data-a></span>
+        </div>
+        <div class="k-prawa" id="k-prawa">
+          <span class="k-timer" id="k-timer" data-a></span>
+          <span class="viz" id="k-viz" data-a><i></i><i></i><i></i><i></i><i></i></span>
+        </div>
+      </div>
+
+      <!-- ===== krótkie powiadomienie (ok. 3 s) ===== -->
+      <div class="powiad" id="powiad">
+        <span class="p-ikona" id="p-ikona" data-a></span>
+        <div class="p-tekst">
+          <strong id="p-tytul" data-a></strong>
+          <span id="p-opis" data-a></span>
+          <div class="tor p-tor" id="p-tor" data-a><div class="wyp" id="p-wyp"></div></div>
+        </div>
+      </div>
+
+      <!-- ===== rozwinięta ===== -->
+      <div class="rozw" id="rozw">
+
+        <!-- karta multimediów -->
+        <section class="karta" id="karta" hidden>
+          <div class="karta-gora">
+            <div class="okl duza" id="r-okladka" data-a><i class="okl-w"></i><i class="okl-w"></i><span class="okl-zast" data-ikona="nuta"></span></div>
+            <div class="opis" data-a>
+              <strong id="r-tytul"></strong>
+              <span id="r-wykonawca"></span>
+            </div>
+            <span class="viz duzy" id="r-viz" data-a><i></i><i></i><i></i><i></i><i></i></span>
+          </div>
+          <div class="postep" id="r-postep" data-a>
+            <span id="r-poz">0:00</span>
+            <div class="tor"><div class="wyp" id="r-wyp"></div></div>
+            <span id="r-zostalo">-0:00</span>
+          </div>
+          <div class="sterowanie" data-a>
+            <button type="button" class="s-btn" id="s-prev" aria-label="Poprzedni utwór" data-ikona="prev"></button>
+            <button type="button" class="s-btn glowny" id="s-toggle" aria-label="Pauza / odtwarzaj">
+              <span class="ik-play" data-ikona="play"></span><span class="ik-pauza" data-ikona="pauza"></span>
+            </button>
+            <button type="button" class="s-btn" id="s-next" aria-label="Następny utwór" data-ikona="next"></button>
+          </div>
+        </section>
+
+        <!-- kafelki z danymi (każdy widoczny tylko, gdy moduł jest włączony w ustawieniach) -->
+        <section class="kafle" id="kafle">
+          <div class="kafel" data-modul="bateria" data-a>
+            <span class="kafel-ikona" id="b-ikona" data-ikona="bateria"></span>
+            <div class="kafel-tekst"><span class="etykieta">Bateria</span><strong id="b-wartosc">…</strong></div>
+            <div class="tor"><div class="wyp" id="b-wyp"></div></div>
+          </div>
+          <div class="kafel" data-modul="glosnosc" data-a>
+            <span class="kafel-ikona" data-ikona="glosnik"></span>
+            <div class="kafel-tekst"><span class="etykieta">Głośność</span><strong id="g-wartosc">…</strong></div>
+            <div class="tor"><div class="wyp" id="g-wyp"></div></div>
+          </div>
+          <div class="kafel" data-modul="procesor" data-a>
+            <span class="kafel-ikona" data-ikona="cpu"></span>
+            <div class="kafel-tekst"><span class="etykieta">Procesor</span><strong id="c-wartosc">…</strong></div>
+            <div class="tor"><div class="wyp" id="c-wyp"></div></div>
+          </div>
+        </section>
+
+        <!-- minutnik -->
+        <section class="minutnik" id="minutnik" data-modul="timer" data-a>
+          <span class="kafel-ikona" data-ikona="zegar"></span>
+          <strong class="m-czas" id="m-czas">Minutnik</strong>
+          <div class="m-chipy" id="m-chipy">
+            <button type="button" class="chip" data-min="1">1</button>
+            <button type="button" class="chip" data-min="5">5</button>
+            <button type="button" class="chip" data-min="10">10</button>
+            <button type="button" class="chip" data-min="25">25</button>
+            <span class="m-min">min</span>
+          </div>
+          <button type="button" class="chip stop" id="m-stop">Zatrzymaj</button>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="wyspa.js"></script>
+</body>
+</html>
