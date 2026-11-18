@@ -7,10 +7,10 @@
  *  - USTAWIENIA: zwykłe okno konfiguracji. Otwiera się przy ręcznym uruchomieniu (skrót), przy próbie
  *    uruchomienia drugiej kopii i z menu w zasobniku.
  *
- * Tu są też: zasobnik, autostart, zapis ustawień, odczyt baterii / głośności / procesora,
+ * Tu są też: zasobnik, autostart, zapis ustawień, schowek na pliki, odczyt baterii / głośności / procesora,
  * monitor zdarzeń (powiadomienia) i proces pomocnika (multimedia + wykrywanie pełnego ekranu).
  */
-const { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const readline = require('readline');
@@ -20,6 +20,7 @@ const si = require('systeminformation');   // bateria i procesor
 const loudness = require('loudness');       // głośność systemowa w Windows
 const { utworzDetektor } = require('./lib/zdarzenia');
 const U = require('./lib/ustawienia');
+const S = require('./lib/schowek');
 const MARKA = require('./lib/marka');
 
 // ---------- stałe ----------
@@ -100,6 +101,65 @@ function zastosujUstawienia() {
   wykryjZdarzenia = utworzDetektor();      // po włączeniu modułu nie porównuj ze starym odczytem
   wyslijDoPomocnika('media ' + (ustawienia.moduly.muzyka ? 1 : 0));
   if (!ustawienia.moduly.muzyka) ustawMedia(null);
+}
+
+/* ===================== schowek na pliki ===================== */
+// Pliki przeciągnięte na wyspę. Zapamiętujemy tylko ścieżki (lib/schowek.js) w osobnym pliku schowek.json.
+// Do wyspy idzie lista z miniaturą (obrazki i PDF-y — podgląd, inne pliki — ikona z Windows)
+// i informacją, czy plik dalej istnieje.
+
+let schowek = [];
+const miniatury = new Map();     // ścieżka → { mtime, url (data:), obraz (nativeImage do przeciągania) }
+
+function plikSchowka() { return path.join(app.getPath('userData'), 'schowek.json'); }
+
+function wczytajSchowek() {
+  try { schowek = S.normalizuj(JSON.parse(fs.readFileSync(plikSchowka(), 'utf8'))); }
+  catch (e) { schowek = []; }
+}
+
+function zapiszSchowek() {
+  try {
+    const plik = plikSchowka();
+    fs.mkdirSync(path.dirname(plik), { recursive: true });
+    fs.writeFileSync(plik + '.tmp', JSON.stringify({ wersja: 1, pliki: schowek }, null, 2), 'utf8');
+    fs.renameSync(plik + '.tmp', plik);
+  } catch (e) { dbg('zapis schowka:', e.message); }
+}
+
+async function miniatura(sciezka, st) {
+  const m = miniatury.get(sciezka);
+  if (m && m.mtime === st.mtimeMs) return m;
+  let obraz = null;
+  // folder: wyspa rysuje własną ikonę (Windows podaje dla folderów w Temp/OneDrive dziwne ikony dysków)
+  if (st.isDirectory()) { const w = { mtime: st.mtimeMs, url: null, obraz: null }; miniatury.set(sciezka, w); return w; }
+  if (st.isFile()) {
+    try { obraz = await nativeImage.createThumbnailFromPath(sciezka, { width: 96, height: 96 }); }
+    catch (e) { obraz = null; /* brak podglądu — weźmiemy ikonę */ }
+  }
+  if (!obraz || obraz.isEmpty()) {
+    try { obraz = await app.getFileIcon(sciezka, { size: 'large' }); } catch (e) { obraz = null; }
+  }
+  const wynik = { mtime: st.mtimeMs, url: obraz && !obraz.isEmpty() ? obraz.toDataURL() : null, obraz };
+  miniatury.set(sciezka, wynik);
+  return wynik;
+}
+
+async function opisSchowka() {
+  return Promise.all(schowek.map(async (p) => {
+    let st = null;
+    try { st = await fs.promises.stat(p.sciezka); } catch (e) { /* plik usunięty lub przeniesiony */ }
+    const m = st ? await miniatura(p.sciezka, st) : null;
+    return { sciezka: p.sciezka, nazwa: p.nazwa, istnieje: !!st, folder: !!(st && st.isDirectory()), ikona: m && m.url };
+  }));
+}
+
+let numerSchowka = 0;
+async function wyslijSchowek() {
+  const nr = ++numerSchowka;
+  const lista = await opisSchowka();
+  if (nr === numerSchowka) doWyspy('wyspa:schowek', lista);    // starsza (wolniejsza) odpowiedź nie nadpisze nowszej
+  for (const k of miniatury.keys()) if (!S.zawiera(schowek, k)) miniatury.delete(k);
 }
 
 /* ========================= autostart ========================= */
@@ -577,8 +637,8 @@ const DOZWOLONE_KOMENDY_MEDIA = new Set(['toggle', 'next', 'prev']);
 /* ============================ IPC: wyspa ============================ */
 
 // widoczna: czy okno już jest pokazane (np. strona została przeładowana) — wtedy wyspa od razu się wysuwa
-ipcMain.handle('wyspa:start', () => ({
-  ustawienia, dane: ostatnieDane, media: ostatniaMedia,
+ipcMain.handle('wyspa:start', async () => ({
+  ustawienia, dane: ostatnieDane, media: ostatniaMedia, schowek: await opisSchowka(),
   widoczna: zyje(oknoWyspa) && oknoWyspa.isVisible() && !pelnyEkran
 }));
 
@@ -589,6 +649,7 @@ ipcMain.on('wyspa:rozwiniecie', (_e, rozwinieta) => {
     // Rozwinięta wyspa bierze fokus: wtedy klik gdziekolwiek indziej daje zdarzenie "blur" i ją zwija.
     oknoWyspa.setFocusable(true);
     oknoWyspa.focus();
+    if (schowek.length) wyslijSchowek();     // plik mógł zostać w międzyczasie usunięty / przeniesiony
     if (ustawienia.moduly.procesor) {
       odczytajProcesor().then((c) => { ostatnieDane = { ...ostatnieDane, procesor: c }; doWyspy('wyspa:dane', ostatnieDane); });
     }
@@ -608,6 +669,44 @@ ipcMain.on('wyspa:ignoruj-mysz', (_e, ignoruj) => {
   if (!zyje(oknoWyspa)) return;
   if (ignoruj) oknoWyspa.setIgnoreMouseEvents(true, { forward: true });
   else oknoWyspa.setIgnoreMouseEvents(false);
+});
+
+// Schowek: wyspa podaje ścieżki upuszczonych plików (z preload: webUtils.getPathForFile).
+ipcMain.on('wyspa:schowek-dodaj', (_e, sciezki) => {
+  if (!ustawienia.moduly.schowek || !Array.isArray(sciezki)) return;
+  const istniejace = sciezki.slice(0, 50).filter((s) => typeof s === 'string' && fs.existsSync(s));
+  if (!istniejace.length) return;
+  schowek = S.dodaj(schowek, istniejace, Date.now());
+  dbg('schowek +', istniejace.length, '→', schowek.length);
+  zapiszSchowek();
+  wyslijSchowek();
+});
+
+ipcMain.on('wyspa:schowek-usun', (_e, sciezka) => {
+  if (!S.zawiera(schowek, sciezka)) return;
+  schowek = S.usun(schowek, sciezka);
+  zapiszSchowek();
+  wyslijSchowek();
+});
+
+// Otwieranie i przeciąganie — tylko plików, które naprawdę są w schowku (strona nie poda dowolnej ścieżki).
+ipcMain.on('wyspa:schowek-otworz', (_e, sciezka) => {
+  if (!S.zawiera(schowek, sciezka)) return;
+  shell.openPath(sciezka).then((blad) => { if (blad) dbg('otwieranie:', blad); });
+});
+
+ipcMain.on('wyspa:schowek-pokaz', (_e, sciezka) => {
+  if (S.zawiera(schowek, sciezka)) shell.showItemInFolder(sciezka);
+});
+
+// Przeciągnięcie pliku Z wyspy do innej aplikacji (Eksplorator, przeglądarka, komunikator…).
+// Windows potrzebuje obrazka pod kursorem — miniatura pliku albo ikona Atola.
+ipcMain.on('wyspa:schowek-przeciagnij', (e, sciezka) => {
+  if (!S.zawiera(schowek, sciezka) || !fs.existsSync(sciezka)) return;
+  const m = miniatury.get(sciezka);
+  let ikona = m && m.obraz && !m.obraz.isEmpty() ? m.obraz : nativeImage.createFromPath(ikonaSciezka);
+  if (!ikona.isEmpty()) ikona = ikona.resize({ width: 48 });
+  e.sender.startDrag({ file: sciezka, icon: ikona });
 });
 
 /* ========================== IPC: ustawienia ========================== */
@@ -651,6 +750,7 @@ ipcMain.on('panel:wyspa', (_e, akcja) => {
 
 app.whenReady().then(() => {
   wczytajUstawienia();
+  wczytajSchowek();
   przeniesStareAutostarty();
   autostartDomyslny();
   pilnujPolozenia();
@@ -669,6 +769,8 @@ app.whenReady().then(() => {
       pomocnik: (obiekt) => przetworzLiniePomocnika(JSON.stringify(obiekt)),   // udaje linię z pomocnika
       ustawienia: () => JSON.parse(JSON.stringify(ustawienia)),
       plikUstawien: plikUstawien(),
+      schowek: () => JSON.parse(JSON.stringify(schowek)),
+      dodajDoSchowka: (sciezki) => { schowek = S.dodaj(schowek, sciezki, Date.now()); zapiszSchowek(); return wyslijSchowek(); },
       okna: () => ({ wyspa: zyje(oknoWyspa), wyspaWidoczna: zyje(oknoWyspa) && oknoWyspa.isVisible(), ustawienia: zyje(oknoUstawien) })
     };
   }

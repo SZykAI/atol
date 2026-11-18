@@ -247,3 +247,108 @@ body.notch .rozw { padding-top: 20px; }
 .chip.stop { background: rgba(255, 159, 10, .2); color: var(--pomarancz); padding: 5px 12px; }
 .chip.stop:hover { background: rgba(255, 159, 10, .3); }
 
+
+/* ===================== strony rozwiniętej wyspy (4.1) ===================== */
+/* Strona 1: muzyka, kafelki, minutnik. Strona 2: schowek na pliki. Przełącza kółko myszy (wyspa.js). */
+.strona { display: flex; flex-direction: column; gap: 12px; }
+
+.kropki {
+  position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
+  display: none; flex-direction: column; gap: 5px;
+}
+.rozw.dwie-strony .kropki { display: flex; }
+.kropki i {
+  display: block; width: 5px; height: 5px; border-radius: 3px;
+  background: rgba(255, 255, 255, .28);
+  transition: height .35s var(--przejscie-wej), background-color .25s;
+}
+.kropki i.aktywna-kropka { height: 14px; background: rgba(255, 255, 255, .85); }
+.rozw:not(.aktywna) .kropki { opacity: 0; }
+.kropki { transition: opacity .2s; }
+
+/* ===================== schowek na pliki ===================== */
+#strona-schowek { position: relative; }
+.sch-naglowek { display: flex; align-items: center; gap: 8px; }
+.sch-ikona { width: 18px; height: 18px; color: var(--zolty); flex: none; }
+.sch-naglowek strong { font-size: 14.5px; font-weight: 600; }
+.sch-licznik { margin-left: auto; font-size: 12px; color: var(--szary); font-variant-numeric: tabular-nums; }
+
+/* najwyżej dwa rzędy — dalej lista przewija się kółkiem (gdy dojdzie do góry, kółko wraca do strony 1) */
+.sch-lista {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  max-height: 200px; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .25) transparent;
+}
+.sch-lista:empty { display: none; }
+
+.sch-plik {
+  position: relative; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 9px 5px 8px; border-radius: 15px;
+  background: rgba(255, 255, 255, .075);
+  cursor: pointer;
+  transition: background-color .15s, transform .2s var(--przejscie-wej), opacity .2s;
+}
+.sch-plik:hover { background: rgba(255, 255, 255, .13); }
+.sch-plik:active { transform: scale(.94); }
+.sch-plik.brak { opacity: .4; cursor: default; }
+.sch-plik.brak:active { transform: none; }
+
+.sch-miniatura {
+  width: 44px; height: 44px; flex: none; border-radius: 8px;
+  display: grid; place-items: center; color: var(--szary);
+}
+.sch-miniatura img { max-width: 44px; max-height: 44px; border-radius: 6px; display: block; pointer-events: none; }
+.sch-miniatura svg { width: 30px; height: 30px; }
+.sch-miniatura.folder { color: #64b5ff; }
+.sch-miniatura.folder svg { width: 38px; height: 38px; stroke-width: 1.6; fill: rgba(100, 181, 255, .18); }
+.sch-nazwa {
+  width: 100%; font-size: 11px; line-height: 1.25; text-align: center; color: #e5e5ea;
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+.sch-plik.brak .sch-nazwa::after { content: " (brak)"; color: var(--szary); }
+
+.sch-usun {
+  position: absolute; top: 3px; right: 3px;
+  width: 20px; height: 20px; padding: 5px; border: 0; border-radius: 50%;
+  background: rgba(60, 60, 67, .9); color: #fff; cursor: pointer;
+  opacity: 0; transform: scale(.7);
+  transition: opacity .15s, transform .2s var(--przejscie-wej), background-color .15s;
+}
+.sch-usun svg { stroke-width: 3; }
+.sch-plik:hover .sch-usun, .sch-plik.brak .sch-usun { opacity: 1; transform: scale(1); }
+.sch-usun:hover { background: var(--czerwony); }
+
+.sch-pusty {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 16px; border-radius: 18px;
+  border: 1.5px dashed rgba(255, 255, 255, .18);
+  font-size: 12.5px; color: var(--szary); line-height: 1.35;
+}
+.sch-pusty .sch-strzalka { width: 26px; height: 26px; flex: none; color: rgba(255, 255, 255, .4); }
+
+/* przeciąganie pliku nad wyspą: niebieska strefa "Upuść" na całej stronie schowka */
+.sch-upusc {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  border-radius: 20px; border: 2px dashed rgba(10, 132, 255, .9);
+  background: rgba(3, 26, 56, .9); color: #fff;      /* zasłania kafelki — napis musi być czytelny */
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  opacity: 0; transform: scale(.96); pointer-events: none;
+  transition: opacity .18s, transform .3s var(--przejscie-wej);
+}
+.sch-upusc strong { font-size: 14px; font-weight: 600; }
+.sch-upusc .sch-strzalka { width: 30px; height: 30px; color: #64b5ff; }
+.rozw.upuszczanie .sch-upusc { opacity: 1; transform: scale(1); }
+.rozw.upuszczanie #strona-schowek { min-height: 128px; }
+.rozw.upuszczanie .sch-upusc .sch-strzalka { animation: sch-podskok .9s ease-in-out infinite; }
+@keyframes sch-podskok { 50% { transform: translateY(4px); } }
+
+/* nowo dodany plik: krótkie "wskoczenie" */
+.sch-plik.nowy { animation: sch-nowy .5s var(--przejscie-wej); }
+@keyframes sch-nowy { from { opacity: 0; transform: scale(.6); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .rozw.upuszczanie .sch-upusc .sch-strzalka, .sch-plik.nowy { animation: none; }
+}

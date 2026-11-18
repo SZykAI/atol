@@ -15,6 +15,9 @@
  *     elementu, więc przeglądarka nie przelicza układu strony w każdej klatce (brak szarpania).
  *   - Treść porusza się wyłącznie przez transform i opacity.
  *   - Okno ma stały rozmiar i jest przezroczyste; kliknięcia poza pastylką przechodzą do aplikacji pod spodem.
+ *
+ * Rozwinięta wyspa ma dwie strony (4.1), przełączane kółkiem myszy: 1 — muzyka, kafelki, minutnik;
+ * 2 — schowek na pliki. Plik przeciągnięty nad wyspę sam ją rozwija na stronie schowka.
  */
 (function () {
   'use strict';
@@ -55,7 +58,12 @@
     prev: '<svg viewBox="0 0 24 24"><path d="M5 5h2.4v14H5zM20 5.6v12.8a.8.8 0 0 1-1.25.66L9.5 12.66a.8.8 0 0 1 0-1.32l9.25-6.4A.8.8 0 0 1 20 5.6z"/></svg>',
     next: '<svg viewBox="0 0 24 24"><path d="M16.6 5H19v14h-2.4zM4 5.6v12.8a.8.8 0 0 0 1.25.66l9.25-6.4a.8.8 0 0 0 0-1.32l-9.25-6.4A.8.8 0 0 0 4 5.6z"/></svg>',
     play: '<svg viewBox="0 0 24 24"><path d="M7 4.9v14.2a.9.9 0 0 0 1.37.77l11.4-7.1a.9.9 0 0 0 0-1.54L8.37 4.13A.9.9 0 0 0 7 4.9z"/></svg>',
-    pauza: '<svg viewBox="0 0 24 24"><rect x="5.5" y="4.5" width="4.6" height="15" rx="1.3"/><rect x="13.9" y="4.5" width="4.6" height="15" rx="1.3"/></svg>'
+    pauza: '<svg viewBox="0 0 24 24"><rect x="5.5" y="4.5" width="4.6" height="15" rx="1.3"/><rect x="13.9" y="4.5" width="4.6" height="15" rx="1.3"/></svg>',
+    schowek: '<svg viewBox="0 0 24 24"><path d="M3 13h5l1.5 3h5l1.5-3h5"/><path d="M5.6 5h12.8L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5z"/></svg>',
+    upusc: '<svg viewBox="0 0 24 24"><path d="M12 3v11M7.5 9.5 12 14l4.5-4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>',
+    plik: '<svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>',
+    folder: '<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+    x: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>'
   };
 
   Array.prototype.forEach.call(document.querySelectorAll('[data-ikona]'), function (el) {
@@ -221,10 +229,12 @@
   var wysokoscRozw = 200;
 
   function maKompakt() { return !!media || !!timer; }
-  function maCoRozwinac() {
+  // strona 1 (muzyka, kafelki, minutnik) ma co pokazać
+  function maGlowna() {
     var m = ustawienia.moduly;
     return !!media || m.bateria || m.glosnosc || m.procesor || m.timer;
   }
+  function maCoRozwinac() { return maGlowna() || !!ustawienia.moduly.schowek; }
 
   function geometria(s) {
     if (s === 'rozw') return { w: GEOM.rozw.w, h: wysokoscRozw, r: notch ? 30 : GEOM.rozw.r };
@@ -267,6 +277,7 @@
 
   function aktualizujStan(wymuszonaSprezyna) {
     if (rozwinieta && !maCoRozwinac()) { rozwinieta = false; api.ustawRozwiniecie(false); }
+    odswiezStrony();
     var poprzedni = stan;
     stan = rozwinieta ? 'rozw' : powiadAktywne ? 'powiad' : maKompakt() ? 'kompakt' : 'pusta';
     if (stan !== 'pusta') wcisnieta = false;      // inny stan przejmuje kształt
@@ -350,11 +361,13 @@
     });
   }
 
-  function rozwin() {
+  // naStrone: 1 = od razu schowek; bez podania — strona 1, a jeśli nie ma na niej nic — schowek
+  function rozwin(naStrone) {
     if (!maCoRozwinac()) return;
     rozwinieta = true;
     powiadAktywne = false;
     clearTimeout(tPowiad);
+    pokazStrone(naStrone === 1 || !maGlowna() ? 1 : 0);
     wysokoscRozw = Math.ceil(rozwEl.offsetHeight);
     aktualizujStan();
     api.ustawRozwiniecie(true);
@@ -391,7 +404,7 @@
 
   wyspa.addEventListener('click', function (e) {
     if (!wewnatrz(e.clientX, e.clientY)) return;
-    if (e.target.closest('button')) return;           // przyciski robią swoje, nie zwijają wyspy
+    if (e.target.closest('button, .sch-plik')) return;   // przyciski i pliki robią swoje, nie zwijają wyspy
     if (stan === 'rozw') zwin();
     else if (maCoRozwinac()) rozwin();
     else if (stan === 'powiad') { powiadAktywne = false; aktualizujStan(); }
@@ -411,7 +424,225 @@
     }).observe(rozwEl);
   }
 
-  // Pokazanie / schowanie całej wyspy (start, pełny ekran w innej aplikacji, wyłączenie)
+  /* ====================== strony rozwiniętej wyspy ====================== */
+  // strona — ta, którą wyspa ma pokazywać; wyswietlona — ta, która jest teraz w DOM (różnią się przez
+  // ~120 ms podmiany: stara treść znika, potem wchodzi nowa, a wysokość wyspy dopasowuje sprężyna).
+
+  var strona = 0, wyswietlona = 0, tStrony = null;
+  var stronaGlowna = $('strona-glowna'), stronaSchowek = $('strona-schowek');
+  var kropki = document.querySelectorAll('#kropki i');
+
+  function stronaEl(n) { return n === 1 ? stronaSchowek : stronaGlowna; }
+  function dozwolona(n) { return n === 1 ? !!ustawienia.moduly.schowek : maGlowna(); }
+
+  function odswiezKropki() {
+    rozwEl.classList.toggle('dwie-strony', dozwolona(0) && dozwolona(1));
+    kropki[0].classList.toggle('aktywna-kropka', strona === 0);
+    kropki[1].classList.toggle('aktywna-kropka', strona === 1);
+  }
+
+  // Natychmiast (bez animacji) — przy rozwijaniu i gdy bieżąca strona przestała być dostępna
+  function pokazStrone(n) {
+    clearTimeout(tStrony); tStrony = null;
+    strona = wyswietlona = n;
+    [stronaGlowna, stronaSchowek].forEach(function (s) {
+      elementy(s).forEach(function (e) { e.getAnimations().forEach(function (a) { a.cancel(); }); });
+    });
+    stronaGlowna.hidden = n !== 0;
+    stronaSchowek.hidden = n !== 1;
+    odswiezKropki();
+  }
+
+  function odswiezStrony() {
+    if (rozwinieta && !dozwolona(strona)) pokazStrone(strona === 1 ? 0 : 1);
+    else odswiezKropki();
+  }
+
+  function zmienStrone(n) {
+    if (stan !== 'rozw' || n === strona || !dozwolona(n)) return;
+    strona = n;
+    odswiezKropki();
+    if (n === wyswietlona) {                 // powrót, zanim stara strona zdążyła zniknąć
+      clearTimeout(tStrony); tStrony = null;
+      elementy(stronaEl(n)).forEach(function (e) {
+        var b = biezacy(e);
+        e.getAnimations().forEach(function (a) { a.cancel(); });
+        e.animate([b, WIDOCZNY], { duration: 220, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+      });
+      return;
+    }
+    var wDol = n > wyswietlona;
+    elementy(stronaEl(wyswietlona)).forEach(function (e) {
+      var b = biezacy(e);
+      e.getAnimations().forEach(function (a) { a.cancel(); });
+      e.animate([b, { opacity: 0, filter: 'blur(6px)', transform: 'translateY(' + (wDol ? -14 : 14) + 'px) scale(.96)' }],
+        { duration: 130, easing: 'cubic-bezier(.4, 0, 1, 1)', fill: 'forwards' });
+    });
+    clearTimeout(tStrony);
+    tStrony = setTimeout(function () {
+      pokazStrone(strona);
+      elementy(stronaEl(strona)).forEach(function (e, i) {
+        e.animate([{ opacity: 0, filter: 'blur(8px)', transform: 'translateY(' + (wDol ? 16 : -16) + 'px) scale(.96)' }, WIDOCZNY],
+          { duration: 380, delay: i * 40, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'backwards' });
+      });
+    }, 120);
+  }
+
+  // Kółko myszy: w dół → schowek, w górę → strona 1. Lista plików, która się przewija, ma pierwszeństwo.
+  var kolko = { suma: 0, blokada: 0, t: null };
+  wyspa.addEventListener('wheel', function (e) {
+    if (stan !== 'rozw' || !rozwEl.classList.contains('dwie-strony')) return;
+    var lista = e.target.closest && e.target.closest('.sch-lista');
+    if (lista && strona === 1) {
+      if (e.deltaY > 0 && lista.scrollTop + lista.clientHeight < lista.scrollHeight - 1) return;
+      if (e.deltaY < 0 && lista.scrollTop > 0) return;
+    }
+    var t = performance.now();
+    if (t < kolko.blokada) return;            // jeden ruch kółkiem = jedna zmiana strony
+    kolko.suma += e.deltaY;
+    clearTimeout(kolko.t);
+    kolko.t = setTimeout(function () { kolko.suma = 0; }, 200);
+    if (Math.abs(kolko.suma) < 40) return;    // gładzik daje wiele małych kroków — sumujemy je
+    var cel = kolko.suma > 0 ? 1 : 0;
+    kolko.suma = 0;
+    if (cel !== strona) { zmienStrone(cel); kolko.blokada = t + 450; }
+  }, { passive: true });
+
+  /* ====================== schowek na pliki ====================== */
+  // Przeciągnięcie pliku nad wyspę: rozwija się na stronie schowka z niebieską strefą "Upuść".
+  // Okno wyspy przepuszcza mysz poza kształtem, więc pliki można upuścić tylko na sam kształt —
+  // gdy kursor z plikiem z niego zjedzie, oddajemy okno aplikacji pod spodem.
+
+  var schowekLista = [];
+  var nowePliki = null;                 // ścieżki właśnie upuszczone (dostaną animację "wskoczenia")
+  var wlasnePrzeciaganie = false;       // plik wyciągany Z wyspy — nie traktuj go jak nowego
+  var upuszczanie = { aktywne: false, bylaRozw: false, bylaStrona: 0, t: null };
+  var tPoUpuszczeniu = null;
+
+  function odmianaPlikow(n) {
+    var j = n % 10, d = n % 100;
+    return n === 1 ? 'plik' : (j >= 2 && j <= 4 && (d < 10 || d >= 20)) ? 'pliki' : 'plików';
+  }
+
+  function naSchowek(lista) {
+    schowekLista = Array.isArray(lista) ? lista : [];
+    var el = $('sch-lista');
+    el.textContent = '';
+    schowekLista.forEach(function (p) {
+      var d = document.createElement('div');
+      d.className = 'sch-plik' + (p.istnieje ? '' : ' brak');
+      d.title = p.istnieje ? p.sciezka + '\nKliknij — otwórz · prawy przycisk — pokaż w folderze · przeciągnij — wstaw gdzie indziej'
+        : p.sciezka + '\nPlik został przeniesiony albo usunięty';
+      d.draggable = !!p.istnieje;
+      var m = document.createElement('div');
+      m.className = 'sch-miniatura' + (p.folder ? ' folder' : '');
+      if (p.ikona) { var img = new Image(); img.src = p.ikona; img.alt = ''; img.draggable = false; m.appendChild(img); }
+      else m.innerHTML = IKONY[p.folder ? 'folder' : 'plik'];
+      var n = document.createElement('span');
+      n.className = 'sch-nazwa';
+      n.textContent = p.nazwa;
+      var x = document.createElement('button');
+      x.type = 'button';
+      x.className = 'sch-usun';
+      x.setAttribute('aria-label', 'Usuń ze schowka: ' + p.nazwa);
+      x.innerHTML = IKONY.x;
+      x.addEventListener('click', function (e) { e.stopPropagation(); api.schowekUsun(p.sciezka); });
+      d.addEventListener('click', function () { if (p.istnieje) api.schowekOtworz(p.sciezka); });
+      d.addEventListener('contextmenu', function (e) { e.preventDefault(); if (p.istnieje) api.schowekPokaz(p.sciezka); });
+      d.addEventListener('dragstart', function (e) {
+        e.preventDefault();                  // przeciąganie robi Windows (proces główny: startDrag)
+        if (!p.istnieje) return;
+        wlasnePrzeciaganie = true;
+        api.schowekPrzeciagnij(p.sciezka);
+      });
+      if (nowePliki && nowePliki[p.sciezka.toLowerCase()]) d.classList.add('nowy');
+      d.append(m, n, x);
+      el.appendChild(d);
+    });
+    nowePliki = null;
+    var ile = schowekLista.length;
+    $('sch-pusty').hidden = ile > 0;
+    $('sch-licznik').textContent = ile ? ile + ' ' + odmianaPlikow(ile) : '';
+  }
+
+  function maPliki(e) {
+    var t = e.dataTransfer && e.dataTransfer.types;
+    return !!t && Array.prototype.indexOf.call(t, 'Files') >= 0;
+  }
+
+  function koniecUpuszczania() {
+    clearTimeout(upuszczanie.t);
+    upuszczanie.aktywne = false;
+    rozwEl.classList.remove('upuszczanie');
+  }
+
+  // Plik odjechał z wyspy bez upuszczenia — wracamy do tego, co było przed
+  function anulujUpuszczanie() {
+    if (!upuszczanie.aktywne) return;
+    koniecUpuszczania();
+    if (!upuszczanie.bylaRozw) zwin();
+    else zmienStrone(upuszczanie.bylaStrona);
+    sprawdzMysz();
+  }
+
+  function nadWyspa(e) {
+    if (!ustawienia.moduly.schowek || wlasnePrzeciaganie || sV.cel !== 1 || !maPliki(e)) return;
+    mysz.x = e.clientX; mysz.y = e.clientY;
+    if (!wewnatrz(e.clientX, e.clientY)) {
+      // nad przezroczystą częścią okna — nie przyjmujemy; oddajemy okno temu, co jest pod spodem
+      anulujUpuszczanie();
+      ustawPrzechwytywanie(false);
+      return;
+    }
+    e.preventDefault();                      // "tak, można tu upuścić"
+    e.dataTransfer.dropEffect = 'copy';
+    if (!upuszczanie.aktywne) {
+      upuszczanie.aktywne = true;
+      upuszczanie.bylaRozw = rozwinieta;
+      upuszczanie.bylaStrona = strona;
+      clearInterval(tPoUpuszczeniu);
+      ustawPrzechwytywanie(true);
+      if (!rozwinieta) rozwin(1);
+      else zmienStrone(1);
+      rozwEl.classList.add('upuszczanie');
+    }
+    // dragover przychodzi co ~50 ms, także gdy kursor stoi — brak przez 300 ms = plik opuścił wyspę
+    clearTimeout(upuszczanie.t);
+    upuszczanie.t = setTimeout(anulujUpuszczanie, 300);
+  }
+  document.addEventListener('dragenter', nadWyspa);
+  document.addEventListener('dragover', nadWyspa);
+
+  document.addEventListener('drop', function (e) {
+    e.preventDefault();                      // bez tego Chromium otworzyłby plik w oknie wyspy
+    if (wlasnePrzeciaganie) { wlasnePrzeciaganie = false; return; }
+    if (!upuszczanie.aktywne) return;
+    var bylaRozw = upuszczanie.bylaRozw;
+    koniecUpuszczania();
+    var sciezki = [].map.call(e.dataTransfer.files || [], function (f) { return api.sciezkaPliku(f); })
+      .filter(Boolean);
+    if (sciezki.length) {
+      nowePliki = {};
+      sciezki.forEach(function (s) { nowePliki[s.toLowerCase()] = true; });
+      api.schowekDodaj(sciezki);
+    }
+    // Wyspa rozwinęła się sama (przez przeciąganie) — zwija się, gdy kursor odjedzie z niej na ~1,5 s.
+    // (Okno nie zawsze dostaje fokus w trakcie przeciągania, więc zwykłe "klik poza" mogłoby nie zadziałać.)
+    if (!bylaRozw) {
+      var poza = 0;
+      clearInterval(tPoUpuszczeniu);
+      tPoUpuszczeniu = setInterval(function () {
+        if (stan !== 'rozw') { clearInterval(tPoUpuszczeniu); return; }
+        if (wewnatrz(mysz.x, mysz.y)) poza = 0;
+        else if ((poza += 250) >= 1500) { clearInterval(tPoUpuszczeniu); zwin(); }
+      }, 250);
+    }
+  });
+
+  document.addEventListener('dragend', function () { wlasnePrzeciaganie = false; });
+  document.addEventListener('mousemove', function (e) { if (wlasnePrzeciaganie && e.buttons === 0) wlasnePrzeciaganie = false; });
+
+
   // Pokazanie / schowanie całej wyspy (start, pełny ekran w innej aplikacji, wyłączenie)
   var widocznaSystem = false;
 
@@ -795,11 +1026,13 @@
   api.naDane(naDane);
   api.naMedia(naMedia);
   api.naPowiadomienie(pokazPowiadomienie);
+  api.naSchowek(naSchowek);
 
   api.start().then(function (s) {
     naUstawienia(s.ustawienia);
     naDane(s.dane);
     naMedia(s.media);
+    naSchowek(s.schowek);
     if (s.widoczna) { widocznaSystem = true; zastosujWidocznosc(P.pokaz); }
   }).catch(function () { aktualizujStan(); });
 

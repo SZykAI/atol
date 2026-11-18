@@ -33,8 +33,9 @@
         </div>
       </div>
 
-      <!-- ===== rozwinięta ===== -->
+      <!-- ===== rozwinięta: dwie strony przełączane kółkiem myszy (1: muzyka i moduły, 2: schowek) ===== -->
       <div class="rozw" id="rozw">
+       <div class="strona" id="strona-glowna">
 
         <!-- karta multimediów -->
         <section class="karta" id="karta" hidden>
@@ -92,6 +93,28 @@
           </div>
           <button type="button" class="chip stop" id="m-stop">Zatrzymaj</button>
         </section>
+       </div>
+
+       <!-- schowek na pliki: przeciągnij plik na wyspę, poczeka tu, aż będzie potrzebny -->
+       <div class="strona" id="strona-schowek" hidden>
+        <div class="sch-naglowek" data-a>
+          <span class="sch-ikona" data-ikona="schowek"></span>
+          <strong>Schowek</strong>
+          <span class="sch-licznik" id="sch-licznik"></span>
+        </div>
+        <div class="sch-lista" id="sch-lista"></div>
+        <div class="sch-pusty" id="sch-pusty" data-a>
+          <span class="sch-strzalka" data-ikona="upusc"></span>
+          <span>Przeciągnij tu plik — poczeka, aż będzie potrzebny</span>
+        </div>
+        <div class="sch-upusc" id="sch-upusc" aria-hidden="true">
+          <span class="sch-strzalka" data-ikona="upusc"></span>
+          <strong>Upuść, żeby zachować</strong>
+        </div>
+       </div>
+
+       <!-- kropki stron (jak w iPhonie) -->
+       <div class="kropki" id="kropki" aria-hidden="true"><i></i><i></i></div>
       </div>
     </div>
   </div>

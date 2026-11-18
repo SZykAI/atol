@@ -10,6 +10,11 @@ test('wygląd: domyślnie pastylka, notch zapamiętany, nieznany styl odrzucony'
   assert.equal(normalizuj({ wyglad: 'notch' }).wyglad.styl, 'pastylka');
 });
 
+test('ustawienia sprzed 4.1 (bez schowka) dostają schowek włączony, wyłączony zostaje wyłączony', () => {
+  assert.equal(normalizuj({ moduly: { muzyka: true, bateria: true } }).moduly.schowek, true);
+  assert.equal(normalizuj({ moduly: { schowek: false } }).moduly.schowek, false);
+});
+
 test('stare ustawienia z wersji 3.2 (usunięte ustępowanie miejsca) są pomijane', () => {
   const u = normalizuj({ unikanie: { chrome: true }, moduly: { bateria: true } });
   assert.equal(u.unikanie, undefined);
@@ -22,9 +27,9 @@ test('stare ustawienia z wersji 3.0 (usunięty wyzwalacz okien) nie psują wczyt
   assert.equal(u.wyglad.styl, 'notch');
 });
 
-test('domyślnie włączona jest tylko muzyka (pusta pastylka w spoczynku)', () => {
+test('domyślnie włączona jest muzyka i schowek (pusta pastylka w spoczynku)', () => {
   const u = domyslne();
-  assert.deepEqual(u.moduly, { muzyka: true, bateria: false, procesor: false, glosnosc: false, timer: false });
+  assert.deepEqual(u.moduly, { muzyka: true, bateria: false, procesor: false, glosnosc: false, timer: false, schowek: true });
   assert.equal(u.autostartUstawiony, false);
 });
 

@@ -4,7 +4,7 @@
  *   window.wyspa — dla okna wyspy
  *   window.panel — dla okna ustawień
  */
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 const nasluch = (kanal) => (callback) => ipcRenderer.on(kanal, (_e, dane) => callback(dane));
 
@@ -19,7 +19,17 @@ contextBridge.exposeInMainWorld('wyspa', {
   naDane: nasluch('wyspa:dane'),
   naPowiadomienie: nasluch('wyspa:powiadomienie'),
   naMedia: nasluch('wyspa:media'),
-  mediaKomenda: (komenda) => ipcRenderer.send('wyspa:media-komenda', String(komenda))
+  mediaKomenda: (komenda) => ipcRenderer.send('wyspa:media-komenda', String(komenda)),
+
+  // schowek na pliki
+  naSchowek: nasluch('wyspa:schowek'),
+  // ścieżka upuszczonego pliku (od Electrona 32 nie ma już File.path — trzeba zapytać webUtils)
+  sciezkaPliku: (plik) => { try { return webUtils.getPathForFile(plik) || ''; } catch (e) { return ''; } },
+  schowekDodaj: (sciezki) => ipcRenderer.send('wyspa:schowek-dodaj', Array.from(sciezki || [], String)),
+  schowekUsun: (sciezka) => ipcRenderer.send('wyspa:schowek-usun', String(sciezka)),
+  schowekOtworz: (sciezka) => ipcRenderer.send('wyspa:schowek-otworz', String(sciezka)),
+  schowekPokaz: (sciezka) => ipcRenderer.send('wyspa:schowek-pokaz', String(sciezka)),
+  schowekPrzeciagnij: (sciezka) => ipcRenderer.send('wyspa:schowek-przeciagnij', String(sciezka))
 });
 
 contextBridge.exposeInMainWorld('panel', {
