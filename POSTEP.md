@@ -2,3 +2,4 @@
 Do Release v4.2.0 trzeba wgrać wszystkie 3 pliki; 4.1.1 → 4.2.0 tylko ręcznie, dalej automatycznie. Czeka: gh auth login (użytkownik) i publikacja Release.
 2026-11-21 (wieczór): Release v4.2.0 opublikowany (gh), 4.2.0 zainstalowana u użytkownika, strona Atola wdrożona na szykai.pages.dev/projects/atol/ (Cloudflare Pages).
 2026-11-21 (noc): filmy promo 4.2 (v3 końcowy, Opus), strona szykai: Co nowego w 4.2 (wdrożone). Plan 4.3 zapisany w pamięci. Kod filmu w reklama/promo-42c.
+2026-11-21 (noc): pulpit użytkownika: tapeta czysta-biel-czern.png (Pictures\Tapety; poprzednie ścieżki w Pictures\tapeta-poprzednia.txt), ikony pulpitu ukryte (HideIcons=1, pliki nietknięte, 14), widget zegara w C:\Users\Marcel\projekty\test\zegar (Electron, bez autostartu — czeka na zgodę).
