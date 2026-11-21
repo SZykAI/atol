@@ -39,5 +39,7 @@ contextBridge.exposeInMainWorld('panel', {
   ustawPowiadomienie: (klucz, wartosc) => ipcRenderer.send('panel:powiadomienie', String(klucz), !!wartosc),
   ustawAutostart: (wartosc) => ipcRenderer.send('panel:autostart', !!wartosc),
   ustawWyglad: (styl) => ipcRenderer.send('panel:wyglad', String(styl)),     // 'pastylka' | 'notch'
+  ustawAktualizacje: (wartosc) => ipcRenderer.send('panel:aktualizacje', !!wartosc),
+  aktualizuj: (akcja) => ipcRenderer.send('panel:aktualizuj', String(akcja)),   // 'sprawdz' | 'zainstaluj'
   wyspa: (akcja) => ipcRenderer.send('panel:wyspa', String(akcja))
 });

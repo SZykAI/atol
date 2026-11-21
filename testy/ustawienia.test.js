@@ -87,3 +87,10 @@ test('baterię i głośność czytamy, gdy potrzebuje ich moduł albo powiadomie
   u.moduly.glosnosc = true;
   assert.equal(potrzebaGlosnosci(u), true);
 });
+
+test('aktualizacje: domyślnie włączone (także dla starych ustawień), wyłączenie zapamiętane', () => {
+  assert.equal(domyslne().aktualizacje, true);
+  assert.equal(normalizuj({ moduly: { muzyka: true } }).aktualizacje, true);
+  assert.equal(normalizuj({ aktualizacje: false }).aktualizacje, false);
+  assert.equal(normalizuj({ aktualizacje: 'nie' }).aktualizacje, true);
+});

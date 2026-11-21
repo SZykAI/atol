@@ -134,6 +134,15 @@
     api.ustawAutostart(nowa);
   });
 
+  $('aktualizacje').addEventListener('click', function () {
+    var nowa = this.getAttribute('aria-checked') !== 'true';
+    this.setAttribute('aria-checked', String(nowa));
+    api.ustawAktualizacje(nowa);
+  });
+  $('btn-aktualizuj').addEventListener('click', function () {
+    api.aktualizuj(this.dataset.akcja === 'zainstaluj' ? 'zainstaluj' : 'sprawdz');
+  });
+
   $('btn-uruchom').addEventListener('click', function () { api.wyspa('uruchom'); });
   $('btn-wylacz').addEventListener('click', function () { api.wyspa('wylacz'); });
   $('btn-resetuj').addEventListener('click', function () {
@@ -199,6 +208,28 @@
       a.setAttribute('aria-checked', String(!!s.autostart));
       $('autostart-opis').textContent = 'Wyspa pojawi się sama po zalogowaniu, bez tego okna.';
     }
+
+    // aktualizacje
+    var ak = s.aktualizacja || { dostepna: false, stan: 'brak' };
+    var wl = u.aktualizacje !== false;
+    $('aktualizacje').setAttribute('aria-checked', String(wl));
+    var tekst = 'Dostępne w zainstalowanej aplikacji (teraz działa z kodu źródłowego).';
+    var przycisk = $('btn-aktualizuj');
+    przycisk.dataset.akcja = ak.stan === 'gotowa' ? 'zainstaluj' : 'sprawdz';
+    przycisk.textContent = ak.stan === 'gotowa' ? 'Uruchom ponownie i zainstaluj' : 'Sprawdź aktualizacje';
+    przycisk.disabled = !ak.dostepna || !wl || ak.stan === 'sprawdzam' || ak.stan === 'pobieram';
+    if (ak.dostepna) {
+      if (!wl) tekst = 'Automatyczne aktualizacje są wyłączone.';
+      else if (ak.stan === 'sprawdzam') tekst = 'Sprawdzam…';
+      else if (ak.stan === 'pobieram') tekst = 'Pobieram wersję ' + (ak.wersja || '') + ' — ' + (ak.postep || 0) + '%';
+      else if (ak.stan === 'gotowa') tekst = 'Wersja ' + (ak.wersja || '') + ' jest gotowa do instalacji.';
+      else if (ak.stan === 'aktualna') tekst = 'Masz najnowszą wersję.';
+      else if (ak.stan === 'blad') tekst = 'Nie udało się sprawdzić (brak internetu?). Spróbuj później.';
+      else tekst = 'Sprawdzam automatycznie co kilka godzin.';
+    }
+    $('akt-status').textContent = tekst;
+    $('aktualizacje-opis').textContent = ak.dostepna ? 'Atol sam sprawdza nowe wersje i pobiera je w tle.' : 'Dostępne w zainstalowanej aplikacji.';
+    $('aktualizacje').disabled = !ak.dostepna;
 
     MODULY.forEach(function (m) { $('modul-' + m.klucz).setAttribute('aria-checked', String(!!u.moduly[m.klucz])); });
     POWIADOMIENIA.forEach(function (p) { $('pow-' + p.klucz).setAttribute('aria-checked', String(!!u.powiadomienia[p.klucz])); });

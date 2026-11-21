@@ -22,6 +22,7 @@ const { utworzDetektor } = require('./lib/zdarzenia');
 const U = require('./lib/ustawienia');
 const S = require('./lib/schowek');
 const MARKA = require('./lib/marka');
+const AKT = require('./lib/aktualizacje');
 
 // ---------- stałe ----------
 const SZEROKOSC_OKNA_WYSPY = 440;   // okno jest stałe i większe niż pastylka — zmienia się tylko pastylka (CSS)
@@ -83,6 +84,14 @@ function wczytajUstawienia() {
   try { ustawienia = U.normalizuj(JSON.parse(fs.readFileSync(plikUstawien(), 'utf8'))); }
   catch (e) { ustawienia = U.domyslne(); /* brak pliku lub uszkodzony — domyślne */ }
 }
+
+// Aktualizacje z GitHub Releases (tylko w zainstalowanej aplikacji; błędy sieci są ciche)
+const aktualizator = AKT.utworz({
+  app,
+  dbg: (...a) => dbg(...a),
+  czyWlaczone: () => ustawienia.aktualizacje !== false,
+  naZmiane: () => doUstawien('panel:stan', stanPanelu())
+});
 
 function zapiszUstawienia() {
   // zapis przez plik tymczasowy: wyłączenie prądu w trakcie zapisu nie zostawi połówki pliku
@@ -365,6 +374,7 @@ function otworzUstawienia() {
 
 function stanPanelu() {
   return {
+    aktualizacja: Object.assign({ dostepna: aktualizator.dostepne() }, aktualizator.stan()),
     ustawienia,
     autostart: czyAutostart(),                 // null = niedostępny (uruchomiono z kodu, nie z instalacji)
     wyspaDziala: zyje(oknoWyspa),
@@ -740,6 +750,19 @@ ipcMain.on('panel:wyglad', (_e, styl) => {
   zastosujUstawienia();
 });
 
+ipcMain.on('panel:aktualizacje', (_e, wartosc) => {
+  if (typeof wartosc !== 'boolean') return;
+  ustawienia.aktualizacje = wartosc;
+  zapiszUstawienia();
+  aktualizator.zastosuj();
+  doUstawien('panel:stan', stanPanelu());
+});
+
+ipcMain.on('panel:aktualizuj', (_e, akcja) => {
+  if (akcja === 'sprawdz') aktualizator.sprawdz();
+  else if (akcja === 'zainstaluj') aktualizator.zainstalujTeraz();
+});
+
 ipcMain.on('panel:wyspa', (_e, akcja) => {
   if (akcja === 'uruchom') uruchomWyspe();
   else if (akcja === 'wylacz') wylaczWyspe();
@@ -757,6 +780,7 @@ app.whenReady().then(() => {
   odczytajProcesor();          // "rozgrzewka": pierwszy odczyt CPU jest niedokładny
   utworzTacke();
   uruchomWyspe();
+  aktualizator.zastosuj();
   if (!uruchomionoZAutostartu) otworzUstawienia();
 
   // Tryb testowy (tylko z WYSPA_DEBUG=1): pozwala z zewnątrz wstrzyknąć zdarzenie, stan multimediów itp.
