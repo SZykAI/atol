@@ -1,0 +1,104 @@
+/* Atol 4.2 promo v2 — dodatki do scena.css (bez przejść i animacji; każdą wartość ustawia scena.js) */
+
+/* poprawka z v1: strefa „Upuść” — napis u góry, duch pliku ląduje niżej (nic się nie nakłada) */
+.sch-upusc { flex-direction: row; align-items: flex-start; justify-content: center; padding-top: 20px; gap: 12px; }
+.sch-upusc .sch-strzalka { width: 28px; height: 28px; }
+.sch-upusc strong { line-height: 28px; }
+
+/* kropki stron wyspy */
+/* v3: jak w okna/wyspa.css — pionowo przy prawej krawędzi karty, poza układem (nie zmienia wysokości wyspy);
+   wysokość i kolor aktywnej kropki animuje scena.js (przejścia CSS nie liczą się w czasie filmu) */
+.kropki { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 5px; }
+.kropki[hidden] { display: none !important; }
+.kropki i { display: block; width: 5px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.28); }
+
+/* „świat”: pulpit w kadrze, poruszany kamerą */
+.swiat { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+.tapeta2 { position: absolute; inset: -500px; overflow: hidden;
+  background:
+    radial-gradient(ellipse 60% 70% at 18% 88%, rgba(124,108,255,.95), transparent 70%),
+    radial-gradient(ellipse 55% 60% at 88% 30%, rgba(54,197,255,.75), transparent 70%),
+    radial-gradient(ellipse 45% 45% at 30% 10%, rgba(255,95,162,.55), transparent 70%),
+    radial-gradient(ellipse 70% 50% at 60% 75%, rgba(40,30,120,.9), transparent 75%),
+    linear-gradient(160deg, #1a1450 0%, #0d1a4a 45%, #071029 100%); }
+.tapeta2 i { position: absolute; border-radius: 50%; filter: blur(70px); }
+.tapeta2 .f1 { width: 1100px; height: 420px; left: 1100px; top: 1260px; background: rgba(160,120,255,.5); transform: rotate(-18deg); }
+.tapeta2 .f2 { width: 900px; height: 320px; left: 1800px; top: 980px; background: rgba(90,220,255,.38); transform: rotate(-24deg); }
+.tapeta2 .f3 { width: 650px; height: 260px; left: 860px; top: 920px; background: rgba(255,120,190,.3); transform: rotate(12deg); }
+
+.ikp-odznaka { position: absolute; right: 22px; top: -4px; min-width: 34px; height: 34px; border-radius: 17px; background: #ff453a; color: #fff; font-size: 21px; font-weight: 700; display: grid; place-items: center; padding: 0 8px; opacity: 0; text-shadow: none; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+.ikp { z-index: 6; }
+.ikp-sel { position: absolute; left: 4px; right: 4px; top: -8px; bottom: -8px; border-radius: 10px; background: rgba(120,170,255,.28); border: 1.5px solid rgba(160,200,255,.7); opacity: 0; z-index: -1; }
+
+/* okno Eksploratora */
+.eks { position: absolute; left: 150px; top: 660px; width: 880px; height: 345px; border-radius: 16px; overflow: hidden; background: #1b1b25; box-shadow: 0 30px 70px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.1); opacity: 0; z-index: 2; }
+.eks-bar { height: 50px; background: #121218; display: flex; align-items: center; padding: 0 20px; gap: 14px; font-size: 21px; color: #ddd; }
+.eks-bar b { font-weight: 600; }
+.eks-pasek { height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,.07); font-size: 18px; color: #9a9aaa; }
+.eks-pasek span { padding: 5px 14px; border-radius: 9px; background: rgba(255,255,255,.07); color: #ddd; }
+.eks-bok { position: absolute; left: 0; top: 96px; bottom: 0; width: 190px; border-right: 1px solid rgba(255,255,255,.07); padding: 14px 18px; font-size: 19px; color: #9a9aaa; display: flex; flex-direction: column; gap: 14px; }
+.eks-bok em { font-style: normal; color: #fff; }
+
+/* okno wiadomości z v1: niżej i szerzej */
+.wiad { left: 1090px; top: 660px; width: 720px; height: 345px; z-index: 2; }
+.wiad-zal { height: 80px; bottom: 16px; }
+
+/* kółko myszy (przewijanie) */
+.kolko { position: absolute; left: 0; top: 0; width: 52px; height: 80px; border-radius: 26px; border: 4px solid #fff; background: rgba(12,12,22,.92); opacity: 0; z-index: 21; box-shadow: 0 8px 20px rgba(0,0,0,.45); }
+.kolko i { position: absolute; left: 50%; top: 12px; width: 8px; height: 20px; margin-left: -4px; border-radius: 4px; background: #fff; }
+
+/* strona szykai.pages.dev/projects/atol (makieta) */
+.pg { position: absolute; inset: 0; background: #07070d; overflow: hidden; color: #f2f2f7; }
+.pg-tlo { position: absolute; inset: -100px; background:
+  radial-gradient(ellipse 50% 55% at 20% 0%, rgba(124,108,255,.45), transparent 70%),
+  radial-gradient(ellipse 45% 50% at 90% 20%, rgba(54,197,255,.3), transparent 70%); }
+.pg-nav { position: absolute; left: 0; right: 0; top: 0; height: 84px; display: flex; align-items: center; padding: 0 60px; gap: 40px; font-size: 22px; color: #b9b9c8; }
+.pg-nav b { font-size: 30px; color: #fff; letter-spacing: -.5px; margin-right: auto; }
+.pg-nav b span { background: linear-gradient(90deg, #7c6cff, #36c5ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.pg-hero { position: absolute; left: 90px; top: 130px; width: 820px; }
+.pg-ikona { width: 120px; height: 120px; border-radius: 28px; box-shadow: 0 24px 60px -16px rgba(124,108,255,.8); display: block; }
+.pg-h1 { font-size: 108px; font-weight: 800; letter-spacing: -4px; line-height: 1; margin: 30px 0 0; }
+.pg-h1 span { background: linear-gradient(90deg, #7c6cff, #36c5ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.pg-lead { font-size: 30px; color: #b9b9c8; margin: 18px 0 0; line-height: 1.35; }
+.pg-przyc { display: flex; align-items: center; gap: 22px; margin-top: 34px; }
+.pg-btn { padding: 18px 38px; border-radius: 40px; background: linear-gradient(90deg, #7c6cff, #36c5ff); color: #0b0b12; font-size: 26px; font-weight: 700; }
+.pg-mala { font-size: 20px; color: #8b8b9a; }
+.pg-wersja { position: absolute; padding: 10px 22px; border-radius: 30px; font-size: 22px; font-weight: 600; border: 1.5px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); display: flex; gap: 10px; align-items: center; white-space: nowrap; }
+.pg-wersja i { width: 12px; height: 12px; border-radius: 50%; background: #30d158; box-shadow: 0 0 12px #30d158; display: block; }
+.pg-nowa { position: absolute; padding: 10px 26px; border-radius: 30px; font-size: 22px; font-weight: 700; background: linear-gradient(90deg, #7c6cff, #36c5ff); color: #0b0b12; display: flex; gap: 10px; align-items: center; box-shadow: 0 0 60px rgba(124,108,255,.8); white-space: nowrap; }
+.pg-fala { position: absolute; border-radius: 40px; border: 3px solid rgba(124,108,255,.9); }
+.pg-karta { position: absolute; right: 70px; top: 120px; width: 600px; border-radius: 26px; background: rgba(255,255,255,.06); border: 1.5px solid rgba(255,255,255,.14); padding: 32px 38px 24px; box-shadow: 0 30px 80px rgba(0,0,0,.45); }
+.pg-karta h3 { margin: 0; font-size: 38px; letter-spacing: -.8px; }
+.pg-karta h3 span { background: linear-gradient(90deg, #7c6cff, #36c5ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.pg-karta p { margin: 4px 0 18px; color: #8b8b9a; font-size: 20px; }
+.pg-pkt { display: flex; align-items: center; gap: 16px; padding: 14px 0; border-top: 1px solid rgba(255,255,255,.09); font-size: 25px; }
+.pg-pkt .ik { width: 46px; height: 46px; border-radius: 12px; padding: 10px; flex: none; }
+
+/* ustawienia: „O aplikacji” z aktualizacją */
+.oa-karta { background: radial-gradient(360px 160px at 50% 0, rgba(124,108,255,.2), transparent 70%), #17171f; border: 1px solid rgba(255,255,255,.065); border-radius: 14px; padding: 22px 30px 20px; display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 12px; }
+.oa-ikona { width: 72px; height: 72px; border-radius: 19px; box-shadow: 0 18px 40px -14px rgba(124,108,255,.8); }
+.oa-nazwa { margin: 12px 0 0; font-size: 28px; font-weight: 800; letter-spacing: -.6px; }
+.oa-wersja { margin: 2px 0 0; color: #8b8b9a; font-size: 12.5px; }
+.oa-opis { margin: 10px 0 0; max-width: 440px; color: #c9c9d6; font-size: 13px; }
+.oa-studio { margin-top: 14px; padding: 9px 22px; border-radius: 14px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.065); display: flex; flex-direction: column; align-items: center; }
+.oa-studio span { font-size: 11px; color: #8b8b9a; letter-spacing: .4px; text-transform: uppercase; }
+.oa-studio strong { font-size: 15px; font-weight: 600; }
+.oa-studio b { font-weight: 800; background: linear-gradient(90deg, var(--akcent), var(--akcent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.oa-wiersz { background: #17171f; border: 1px solid rgba(255,255,255,.065); border-radius: 14px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; position: relative; overflow: hidden; }
+.oa-wiersz .ik { width: 36px; height: 36px; border-radius: 10px; padding: 8px; flex: none; background: rgba(48,209,88,.14); color: #30d158; }
+.oa-wiersz .tx { flex: 1; min-width: 0; }
+.oa-wiersz .tx b { display: block; font-size: 14px; font-weight: 600; }
+.oa-wiersz .tx span { color: #8b8b9a; font-size: 12.5px; }
+.oa-btn { padding: 9px 18px; border-radius: 10px; background: #1f1f29; border: 1px solid rgba(255,255,255,.08); font-size: 13px; font-weight: 600; white-space: nowrap; color: #f2f2f7; }
+.oa-btn.gl { border: 0; background: linear-gradient(135deg, var(--akcent), var(--akcent-2)); color: #0b0b12; }
+.oa-pasek { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255,255,255,.07); }
+.oa-pasek b { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; transform-origin: 0 0; background: linear-gradient(90deg, var(--akcent), var(--akcent-2)); }
+
+/* poświata uderzenia (drop) */
+.blysk { position: absolute; inset: 0; background: radial-gradient(ellipse 60% 60% at 50% 30%, rgba(160,150,255,.9), rgba(54,197,255,.0) 70%); opacity: 0; pointer-events: none; }
+.scrim { position: absolute; inset: 0; background: #05050c; opacity: 0; pointer-events: none; }
+
+/* jaśniejszy gradient napisów (czytelny na fioletowo-niebieskim tle) */
+.napis .grad, .napis.ciemny .grad { background: linear-gradient(90deg, #c4baff 0%, #9fc4ff 50%, #7fe3ff 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+.sch-upusc { background: rgba(3,22,48,.985); }

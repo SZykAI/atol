@@ -5,3 +5,11 @@ dist/
 reklama/podglad/
 reklama/muzyka.wav
 reklama/*.mp4
+# filmy promocyjne 4.2: starsze wersje robocze, klatki, podglądy, dźwięk, logi
+reklama/promo-42/
+reklama/promo-42b/
+reklama/promo-42*/klatki/
+reklama/promo-42*/podglad/
+reklama/promo-42*/*.wav
+reklama/promo-42*/*.log
+reklama/promo-42*/node_modules/
