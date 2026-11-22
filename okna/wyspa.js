@@ -731,6 +731,7 @@
   });
   var PROFIL = [0.6, 0.9, 1, 0.8, 0.65];      // środkowe słupki zwykle wyższe
   var vizGra = false;
+  var oczekiwanaGra = null;                   // { gra, do } — stan zaraz po kliknięciu play/pauza
 
   function krokWizualizatora(dt, t) {
     if (!media || sV.cel === 0) return false;
@@ -829,22 +830,30 @@
 
       // postęp: zegar lokalny; korygujemy tylko przy zmianie utworu, play/pauzy lub dużej różnicy
       var maDl = media.dlugosc > 0;
-      if (nowyUtwor || postep.gra !== !!media.gra || Math.abs(pozycjaTeraz() - media.pozycja) > 1.2 || postep.dl !== media.dlugosc) {
+      // po kliknięciu play/pauza system odpowiada z opóźnieniem i przez chwilę podaje JESZCZE STARY stan
+      // (to dawało „bug”: słupki/ikona wracały do poprzedniego stanu). Dlatego ~1,5 s ufamy kliknięciu.
+      var graTeraz = !!media.gra;
+      if (oczekiwanaGra) {
+        if (nowyUtwor || performance.now() > oczekiwanaGra.do || graTeraz === oczekiwanaGra.gra) oczekiwanaGra = null;
+        else graTeraz = oczekiwanaGra.gra;
+      }
+      if (nowyUtwor || postep.gra !== graTeraz || Math.abs(pozycjaTeraz() - media.pozycja) > 1.2 || postep.dl !== media.dlugosc) {
         postep.baza = media.pozycja || 0;
         postep.czas = performance.now();
         postep.ostSek = -1;
       }
-      postep.gra = !!media.gra;
+      postep.gra = graTeraz;
       postep.dl = media.dlugosc || 0;
       el.postep.classList.toggle('bez-dlugosci', !maDl);
       if (!maDl) el.wyp.style.transform = 'scaleX(0)';
 
       el.prev.disabled = !media.poprzedni;
       el.next.disabled = !media.nastepny;
-      el.toggle.classList.toggle('gra', !!media.gra);
-      vizGra = !!media.gra;
+      el.toggle.classList.toggle('gra', graTeraz);
+      vizGra = graTeraz;
     } else {
       vizGra = false;
+      oczekiwanaGra = null;
       oklMala.ustaw(null, false);
       oklDuza.ustaw(null, false);
     }
@@ -856,7 +865,16 @@
   el.prev.addEventListener('click', function () { api.mediaKomenda('prev'); });
   el.toggle.addEventListener('click', function () {
     // natychmiastowa reakcja ikony; prawdziwy stan przyjdzie z systemu za chwilę
-    el.toggle.classList.toggle('gra');
+    var nowaGra = !vizGra;
+    el.toggle.classList.toggle('gra', nowaGra);
+    oczekiwanaGra = { gra: nowaGra, do: performance.now() + 1500 };
+    if (media) {
+      postep.baza = pozycjaTeraz();           // pasek postępu staje / rusza od razu
+      postep.czas = performance.now();
+      postep.gra = nowaGra;
+      vizGra = nowaGra;
+      budz();
+    }
     api.mediaKomenda('toggle');
   });
   el.next.addEventListener('click', function () { api.mediaKomenda('next'); });
