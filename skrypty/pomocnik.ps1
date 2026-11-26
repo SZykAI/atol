@@ -328,6 +328,7 @@ function OdczytajMedia {
         dlugosc   = [math]::Round($dlugosc, 2)
         poprzedni = [bool]$odtwarzanie.Controls.IsPreviousEnabled
         nastepny  = [bool]$odtwarzanie.Controls.IsNextEnabled
+        przewijanie = [bool]$odtwarzanie.Controls.IsPlaybackPositionEnabled
     }
 
     $i = $script:nrSprawdzenia
@@ -355,6 +356,15 @@ function WykonajKomende($komenda) {
     }
     $s = $script:sesja
     if (-not $s) { return }
+    if ($komenda -match '^seek (\d{1,7}(\.\d{1,3})?)$') {
+        # pozycja w sekundach od początku utworu → ticki (100 ns) na osi czasu źródła (nie zawsze zaczyna się od 0)
+        $sekundy = [double]::Parse($Matches[1], [Globalization.CultureInfo]::InvariantCulture)
+        $os = $s.GetTimelineProperties()
+        $cel = $os.StartTime.Ticks + [long][math]::Round($sekundy * 10000000)
+        if ($cel -gt $os.EndTime.Ticks) { $cel = $os.EndTime.Ticks }
+        $null = Czekaj ($s.TryChangePlaybackPositionAsync($cel)) ([bool])
+        return
+    }
     switch ($komenda) {
         'toggle' { $null = Czekaj ($s.TryTogglePlayPauseAsync()) ([bool]) }
         'next'   { $null = Czekaj ($s.TrySkipNextAsync()) ([bool]) }

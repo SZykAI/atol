@@ -24,6 +24,7 @@ const S = require('./lib/schowek');
 const MARKA = require('./lib/marka');
 const AKT = require('./lib/aktualizacje');
 const { utworzFiltrGrania } = require('./lib/granie');
+const { utworzFiltrPozycji, moznaPrzewinac } = require('./lib/przewijanie');
 const { utworzTeksty } = require('./lib/tekst');
 
 // ---------- stałe ----------
@@ -510,7 +511,7 @@ function zatrzymajMonitor() {
 
 /* ========= pomocnik: multimedia (GSMTC) + pełny ekran ========= */
 // Długo żyjący proces PowerShell (skrypty/pomocnik.ps1). Wypisuje linie JSON na stdout,
-// komendy (pauza, następny, poprzedni, włącz/wyłącz multimedia) dostaje na stdin.
+// komendy (pauza, następny, poprzedni, przewinięcie, włącz/wyłącz multimedia) dostaje na stdin.
 
 let pomocnik = null;
 let pomocnikRestarty = 0;
@@ -530,6 +531,7 @@ let ostatnioGralo = 0;
 let ostatniaMedia = null;          // ostatni stan wysłany do wyspy (null = nic nie gra)
 let ostatniaOkladka = null;        // okładka przychodzi raz na utwór — pamiętamy ją (np. dla resetu wyspy)
 const filtrGrania = utworzFiltrGrania();   // odsiewa chwilowe, nieaktualne „gra / pauza” z systemu
+const filtrPozycji = utworzFiltrPozycji(); // po przewinięciu odsiewa jeszcze starą pozycję z systemu
 
 function sciezkaSkryptu(nazwa) {
   // PowerShell nie odczyta pliku z archiwum asar, więc skrypty są "rozpakowane" obok
@@ -581,7 +583,7 @@ function odswiezTekst(odRazu) {
 function przetworzMedia(s) {
   if (!ustawienia.moduly.muzyka) return;
   if (s.okladkaBlad) dbg('okładka:', s.okladkaBlad);
-  if (!s.aktywna) { filtrGrania.wyczysc(); if (ostatniaMedia) ustawMedia(null); return; }
+  if (!s.aktywna) { filtrGrania.wyczysc(); filtrPozycji.wyczysc(); if (ostatniaMedia) ustawMedia(null); return; }
 
   const gra = filtrGrania.odczyt(s.klucz, !!s.gra, Date.now());
   if (gra) ostatnioGralo = Date.now();
@@ -594,8 +596,9 @@ function przetworzMedia(s) {
 
   ustawMedia({
     klucz: s.klucz, gra, tytul: s.tytul || '', wykonawca: s.wykonawca || '', album: s.album || '',
-    zrodlo: s.zrodlo || '', pozycja: s.pozycja || 0, dlugosc: s.dlugosc || 0,
-    poprzedni: !!s.poprzedni, nastepny: !!s.nastepny,
+    zrodlo: s.zrodlo || '', dlugosc: s.dlugosc || 0,
+    pozycja: filtrPozycji.odczyt(s.klucz, s.pozycja || 0, gra, s.dlugosc || 0, Date.now()),
+    poprzedni: !!s.poprzedni, nastepny: !!s.nastepny, przewijanie: !!s.przewijanie,
     okladka: ostatniaOkladka || undefined
   });
 }
@@ -716,6 +719,16 @@ ipcMain.on('wyspa:media-komenda', (_e, komenda) => {
   dbg('komenda media:', komenda);
   if (komenda === 'toggle') filtrGrania.klikniecie(Date.now());
   wyslijDoPomocnika(komenda);
+});
+
+// Przewinięcie: klucz = utwór, na którego pasku użytkownik puścił mysz (inny już gra → nic nie robimy)
+ipcMain.on('wyspa:media-przewin', (_e, sekundy, klucz) => {
+  const m = ostatniaMedia;
+  if (!m || m.klucz !== klucz || !moznaPrzewinac(sekundy, m)) return;
+  dbg('przewinięcie:', sekundy.toFixed(3));
+  filtrPozycji.przewiniecie(m.klucz, sekundy, Date.now());
+  wyslijDoPomocnika('seek ' + sekundy.toFixed(3));
+  ustawMedia({ ...m, pozycja: sekundy });      // od razu nowa pozycja (także po przeładowaniu wyspy)
 });
 
 // ignoruj = true → kliknięcia przechodzą do aplikacji pod spodem; false → pastylka je przechwytuje

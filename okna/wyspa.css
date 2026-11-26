@@ -185,6 +185,15 @@ body.notch .rozw { padding-top: 20px; }
   transform-origin: 0 50%; transform: scaleX(0);
 }
 
+/* przewijanie utworu: ujemny margines kompensuje padding, więc układ karty się nie zmienia */
+.tor-pole { flex: 1; display: flex; padding: 9px 5px; margin: -9px -5px; touch-action: none; }
+.tor-pole .tor { transition: transform .18s var(--przejscie-wej); }
+.postep.mozna .tor-pole { cursor: pointer; }
+.postep.mozna .tor-pole:hover .tor { transform: scaleY(1.5); }
+.postep.przeciaga .tor-pole { cursor: grabbing; }
+.postep.przeciaga .tor-pole .tor { transform: scaleY(1.9); }
+.postep.przeciaga span:first-child { color: #fff; }
+
 .sterowanie { display: flex; justify-content: center; align-items: center; gap: 36px; margin-top: 8px; }
 .s-btn {
   width: 44px; height: 44px; padding: 10px; border: 0; border-radius: 50%;

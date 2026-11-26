@@ -213,10 +213,11 @@
     przechwytuje = v;
     api.ignorujMysz(!v);
   }
-  function sprawdzMysz() { ustawPrzechwytywanie(wewnatrz(mysz.x, mysz.y) || wStrefieUpuszczania(mysz.x, mysz.y)); }
+  // w trakcie przewijania trzymamy mysz także poza kształtem — inaczej puszczenie przycisku trafiłoby obok
+  function sprawdzMysz() { ustawPrzechwytywanie(!!przeciaganie || wewnatrz(mysz.x, mysz.y) || wStrefieUpuszczania(mysz.x, mysz.y)); }
 
   document.addEventListener('mousemove', function (e) { mysz.x = e.clientX; mysz.y = e.clientY; sprawdzMysz(); });
-  document.addEventListener('mouseleave', function () { mysz.x = mysz.y = -1; ustawPrzechwytywanie(false); });
+  document.addEventListener('mouseleave', function () { mysz.x = mysz.y = -1; if (!przeciaganie) ustawPrzechwytywanie(false); });
 
   /* ====================== stan wyspy ====================== */
 
@@ -224,6 +225,7 @@
   var rozwinieta = false;
   var powiadAktywne = false;
   var media = null;
+  var przeciaganie = null;             // przewijanie na pasku postępu: { id, klucz, ulamek } albo null
   var timer = null;                    // { koniec: ms, min } albo null
   var ustawienia = {
     moduly: { muzyka: true, bateria: false, procesor: false, glosnosc: false, timer: false },
@@ -290,6 +292,7 @@
     var poprzedni = stan;
     stan = rozwinieta ? 'rozw' : powiadAktywne ? 'powiad' : maKompakt() ? 'kompakt' : 'pusta';
     if (stan !== 'pusta') wcisnieta = false;      // inny stan przejmuje kształt
+    if (stan !== 'rozw') koniecPrzewijania(false);   // pasek znika — przewijanie przerwane
 
     wyspa.dataset.stan = stan;
     scena.classList.toggle('cien', stan === 'rozw');     // lekki cień wokół rozwiniętej wyspy
@@ -415,8 +418,8 @@
 
   wyspa.addEventListener('click', function (e) {
     if (!wewnatrz(e.clientX, e.clientY)) return;
-    // przyciski, pliki i widok tekstu robią swoje, nie zwijają wyspy
-    if (e.target.closest('button, .sch-plik, .karta.tryb-tekst')) return;
+    // przyciski, pliki, pasek przewijania i widok tekstu robią swoje, nie zwijają wyspy
+    if (klikZPaska || e.target.closest('button, .sch-plik, .karta.tryb-tekst, .postep.mozna .tor-pole')) return;
     if (stan === 'rozw') zwin();
     else if (maCoRozwinac()) rozwin();
     else if (stan === 'powiad') { powiadAktywne = false; aktualizujStan(); }
@@ -515,7 +518,7 @@
   // Kółko myszy: w dół → schowek, w górę → strona 1. Lista plików, która się przewija, ma pierwszeństwo.
   var kolko = { suma: 0, blokada: 0, t: null };
   wyspa.addEventListener('wheel', function (e) {
-    if (stan !== 'rozw' || !rozwEl.classList.contains('dwie-strony')) return;
+    if (stan !== 'rozw' || przeciaganie || !rozwEl.classList.contains('dwie-strony')) return;
     if (e.target.closest && e.target.closest('.t-lista')) return;   // nad tekstem kółko przewija tylko tekst
     var lista = e.target.closest && e.target.closest('.sch-lista');
     if (lista && strona === 1) {
@@ -808,7 +811,7 @@
 
   var el = {
     karta: $('karta'), tytul: $('r-tytul'), wykonawca: $('r-wykonawca'),
-    postep: $('r-postep'), poz: $('r-poz'), zostalo: $('r-zostalo'), wyp: $('r-wyp'),
+    postep: $('r-postep'), poz: $('r-poz'), zostalo: $('r-zostalo'), wyp: $('r-wyp'), pole: $('r-pole'),
     prev: $('s-prev'), next: $('s-next'), toggle: $('s-toggle')
   };
 
@@ -827,7 +830,8 @@
 
   function krokPostepu() {
     if (!media || stan !== 'rozw' || !(postep.dl > 0)) return false;
-    var p = pozycjaTeraz();
+    // w trakcie przeciągania pasek i czasy pokazują wybierane miejsce
+    var p = przeciaganie ? przeciaganie.ulamek * postep.dl : pozycjaTeraz();
     el.wyp.style.transform = 'scaleX(' + (p / postep.dl).toFixed(4) + ')';
     var s = Math.floor(p);
     if (s !== postep.ostSek) {
@@ -894,7 +898,9 @@
       postep.gra = graTeraz;
       postep.dl = media.dlugosc || 0;
       el.postep.classList.toggle('bez-dlugosci', !maDl);
+      el.postep.classList.toggle('mozna', maDl && !!media.przewijanie);
       if (!maDl) el.wyp.style.transform = 'scaleX(0)';
+      if (przeciaganie && (przeciaganie.klucz !== media.klucz || !maDl || !media.przewijanie)) koniecPrzewijania(false);
 
       el.prev.disabled = !media.poprzedni;
       el.next.disabled = !media.nastepny;
@@ -903,6 +909,7 @@
     } else {
       vizGra = false;
       oczekiwanaGra = null;
+      koniecPrzewijania(false);
       oklMala.ustaw(null, false);
       oklDuza.ustaw(null, false);
       ustawTrybTekstu(false, false);
@@ -931,6 +938,65 @@
     api.mediaKomenda('toggle');
   });
   el.next.addEventListener('click', function () { api.mediaKomenda('next'); });
+
+  /* ---------- przewijanie: klik albo przeciągnięcie na pasku postępu ---------- */
+  var klikZPaska = false;          // ostatnie naciśnięcie zaczęło się na pasku → jego „click” nie zwija wyspy
+
+  function wskazPozycje(e) {
+    var r = el.pole.firstElementChild.getBoundingClientRect();
+    przeciaganie.ulamek = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+    postep.ostSek = -1;
+    krokPostepu();
+  }
+
+  // wyslij: true = puszczono mysz (przewiń), false = przerwane (pasek wraca do bieżącej pozycji)
+  function koniecPrzewijania(wyslij) {
+    var p = przeciaganie;
+    if (!p) return;
+    przeciaganie = null;
+    el.postep.classList.remove('przeciaga');
+    if (el.pole.hasPointerCapture(p.id)) el.pole.releasePointerCapture(p.id);
+    if (wyslij && media && media.klucz === p.klucz && postep.dl > 0) {
+      postep.baza = p.ulamek * postep.dl;
+      postep.czas = performance.now();
+      przewinietoDo = null;                      // tekst piosenki od razu idzie za nową pozycją
+      recznieDo = 0;
+      api.mediaPrzewin(postep.baza, p.klucz);
+      tikTekstu();
+    }
+    postep.ostSek = -1;
+    krokPostepu();
+    sprawdzMysz();
+    budz();
+  }
+
+  document.addEventListener('pointerdown', function () { klikZPaska = false; }, true);
+  el.pole.addEventListener('pointerdown', function (e) {
+    if (e.button !== 0 || stan !== 'rozw' || !el.postep.classList.contains('mozna') || !wewnatrz(e.clientX, e.clientY)) return;
+    e.preventDefault();
+    klikZPaska = true;
+    przeciaganie = { id: e.pointerId, klucz: media.klucz, ulamek: 0 };
+    try { el.pole.setPointerCapture(e.pointerId); } catch (x) { /* bez przechwycenia też zadziała */ }
+    el.postep.classList.add('przeciaga');
+    ustawPrzechwytywanie(true);
+    wskazPozycje(e);
+  });
+  el.pole.addEventListener('pointermove', function (e) {
+    if (!przeciaganie || e.pointerId !== przeciaganie.id) return;
+    mysz.x = e.clientX; mysz.y = e.clientY;
+    if (!(e.buttons & 1)) koniecPrzewijania(false);       // zgubione puszczenie przycisku
+    else wskazPozycje(e);
+  });
+  el.pole.addEventListener('pointerup', function (e) {
+    if (!przeciaganie || e.pointerId !== przeciaganie.id || e.button !== 0) return;
+    mysz.x = e.clientX; mysz.y = e.clientY;
+    wskazPozycje(e);
+    koniecPrzewijania(true);
+  });
+  el.pole.addEventListener('pointercancel', function () { koniecPrzewijania(false); });
+  el.pole.addEventListener('lostpointercapture', function () { koniecPrzewijania(false); });
+  // zapas, gdyby przechwycenie wskaźnika się nie udało
+  document.addEventListener('mousemove', function (e) { if (przeciaganie && e.buttons === 0) koniecPrzewijania(false); });
 
   /* ====================== tekst piosenki ====================== */
   // Dane z procesu głównego: null, { klucz, szukam } albo { klucz, synchroniczny, linie: [{ czas?, tekst }] }.
