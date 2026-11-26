@@ -142,11 +142,27 @@
        <!-- kropki stron (jak w iPhonie) -->
        <div class="kropki" id="kropki" aria-hidden="true"><i></i><i></i></div>
       </div>
+
+      <!-- ===== pobrana aktualizacja: zostaje dłużej niż zwykłe powiadomienie, ma przyciski ===== -->
+      <div class="akt" id="akt">
+        <div class="a-gora">
+          <span class="p-ikona aktualizacja" data-ikona="upusc" data-a></span>
+          <div class="p-tekst">
+            <strong data-a>Aktualizacja gotowa</strong>
+            <span id="a-opis" data-a></span>
+          </div>
+        </div>
+        <div class="a-przyciski">
+          <button type="button" class="a-btn" id="a-pozniej" data-a>Później</button>
+          <button type="button" class="a-btn glowny" id="a-instaluj" data-a>Zainstaluj</button>
+        </div>
+      </div>
     </div>
   </div>
 
   <script src="../lib/minutnik.js"></script>
   <script src="../lib/poziom.js"></script>
+  <script src="../lib/oferta.js"></script>
   <script src="dzwiek.js"></script>
   <script src="wyspa.js"></script>
 </body>

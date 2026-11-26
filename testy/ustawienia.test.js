@@ -48,7 +48,7 @@ test('brak pliku, śmieci albo zły typ → ustawienia domyślne', () => {
 
 test('stary format 1.x (płaskie powiadomienia) zostaje przeniesiony', () => {
   const u = normalizuj({ timer: false, bateria: true, glosnosc: false, ladowanie: true });
-  assert.deepEqual(u.powiadomienia, { timer: false, bateria: true, glosnosc: false, ladowanie: true });
+  assert.deepEqual(u.powiadomienia, { timer: false, bateria: true, glosnosc: false, ladowanie: true, aktualizacja: true });
   assert.deepEqual(u.moduly, domyslne().moduly);
 });
 

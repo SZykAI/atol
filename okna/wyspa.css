@@ -63,17 +63,18 @@ svg .wyp-ik { fill: currentColor; stroke: none; }
  * Animuje się każdy element oznaczony data-a osobno (wyspa.js: opacity + blur + skala + przesunięcie,
  * kolejno co 45 ms) — razem z kształtem wyspy, a nie po jego zakończeniu.
  * Rodzic zawierający tekst nigdy nie jest skalowany, więc tekst się nie rozciąga. */
-.kompakt, .powiad, .rozw { position: absolute; top: 0; pointer-events: none; }
+.kompakt, .powiad, .rozw, .akt { position: absolute; top: 0; pointer-events: none; }
 .aktywna { pointer-events: auto; }
 [data-a] { will-change: opacity, transform, filter; }
 /* elementy nieaktywnej warstwy: schowane (to także stan końcowy animacji wyjścia) */
 .kompakt:not(.aktywna) [data-a],
 .powiad:not(.aktywna) [data-a],
+.akt:not(.aktywna) [data-a],
 .rozw:not(.aktywna) [data-a] { opacity: 0; filter: blur(6px); transform: scale(.9); }
 
 /* ---------- styl NOTCH: płótno przy samej krawędzi ekranu, treść lekko niżej (kształt jest o 2 px wyższy) ---------- */
 body.notch #wyspa { top: 0; }
-body.notch .kompakt, body.notch .powiad { top: 1px; }
+body.notch .kompakt, body.notch .powiad, body.notch .akt { top: 1px; }
 body.notch .rozw { padding-top: 20px; }
 
 /* ===================== zwinięta ===================== */
@@ -153,6 +154,24 @@ body.notch .rozw { padding-top: 20px; }
 .p-ikona.glosnik { background: rgba(10, 132, 255, .2); color: var(--niebieski); }
 .p-ikona.piorun { background: rgba(48, 209, 88, .18); color: var(--zielony); }
 .p-ikona.piorun.koniec { background: rgba(255, 255, 255, .1); color: #d1d1d6; }
+.p-ikona.aktualizacja { background: rgba(10, 132, 255, .2); color: var(--niebieski); }
+
+/* ===================== aktualizacja gotowa ===================== */
+.akt {
+  left: 50%; width: 344px; height: 112px; margin-left: -172px;
+  display: flex; flex-direction: column; justify-content: center; gap: 12px;
+  padding: 0 14px;
+}
+.a-gora { display: flex; align-items: center; gap: 13px; }
+.a-przyciski { display: flex; gap: 8px; }
+.a-btn {
+  flex: 1; height: 34px; border: 0; border-radius: 17px; padding: 0;
+  background: rgba(255, 255, 255, .14); color: #fff;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.a-btn.glowny { background: var(--niebieski); }
+.a-btn:hover { box-shadow: inset 0 0 0 40px rgba(255, 255, 255, .1); }
+.a-btn:active { box-shadow: inset 0 0 0 40px rgba(0, 0, 0, .18); }
 
 /* ===================== rozwinięta ===================== */
 .rozw {

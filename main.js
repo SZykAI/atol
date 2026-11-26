@@ -23,6 +23,7 @@ const U = require('./lib/ustawienia');
 const S = require('./lib/schowek');
 const MARKA = require('./lib/marka');
 const AKT = require('./lib/aktualizacje');
+const OFERTA = require('./lib/oferta');
 const { utworzFiltrGrania } = require('./lib/granie');
 const { utworzFiltrPozycji, moznaPrzewinac } = require('./lib/przewijanie');
 const { utworzTeksty } = require('./lib/tekst');
@@ -94,8 +95,14 @@ const aktualizator = AKT.utworz({
   app,
   dbg: (...a) => dbg(...a),
   czyWlaczone: () => ustawienia.aktualizacje !== false,
-  naZmiane: () => doUstawien('panel:stan', stanPanelu())
+  naZmiane: () => { doUstawien('panel:stan', stanPanelu()); wyslijOferte(); }
 });
+
+// Powiadomienie "Aktualizacja gotowa" na wyspie. Pamięć zamkniętych wersji trzyma proces główny,
+// więc "Później" działa także po resecie wyspy — do następnego uruchomienia aplikacji.
+const pamiecOferty = OFERTA.pamiec();
+function biezacaOferta() { return pamiecOferty.oferta(aktualizator.stan(), U.czyPokazac(ustawienia, 'aktualizacja')); }
+function wyslijOferte() { doWyspy('wyspa:aktualizacja', biezacaOferta()); }
 
 function zapiszUstawienia() {
   // zapis przez plik tymczasowy: wyłączenie prądu w trakcie zapisu nie zostawi połówki pliku
@@ -115,6 +122,7 @@ function zastosujUstawienia() {
   wyslijDoPomocnika('media ' + (ustawienia.moduly.muzyka ? 1 : 0));
   if (!ustawienia.moduly.muzyka) ustawMedia(null);
   odswiezTekst(true);                      // przełącznik tekstu: pobierz od razu albo wyczyść
+  wyslijOferte();                          // przełącznik „Aktualizacja gotowa”
 }
 
 /* ===================== schowek na pliki ===================== */
@@ -722,6 +730,7 @@ const DOZWOLONE_KOMENDY_MEDIA = new Set(['toggle', 'next', 'prev']);
 ipcMain.handle('wyspa:start', async () => ({
   ustawienia, dane: ostatnieDane, schowek: await opisSchowka(),
   media: ostatniaMedia, tekst: ostatniTekst,       // czytane PO await — oba z tej samej chwili
+  aktualizacja: biezacaOferta(),
   widoczna: zyje(oknoWyspa) && oknoWyspa.isVisible() && !pelnyEkran
 }));
 
@@ -766,6 +775,16 @@ ipcMain.on('wyspa:ignoruj-mysz', (_e, ignoruj) => {
 });
 
 ipcMain.on('wyspa:minutnik', (_e, koniec) => ustawBudzikMinutnika(koniec));
+
+// Przyciski powiadomienia o aktualizacji ('pozniej' przychodzi też po upływie czasu pokazu).
+// "Zainstaluj" idzie tą samą drogą co przycisk w ustawieniach: restart, a before-quit sprząta pomocnika.
+ipcMain.on('wyspa:aktualizacja', (_e, akcja) => {
+  const o = biezacaOferta();
+  if (!o || (akcja !== 'zainstaluj' && akcja !== 'pozniej')) return;
+  pamiecOferty.zamknij(o.wersja);
+  wyslijOferte();
+  if (akcja === 'zainstaluj') aktualizator.zainstalujTeraz();
+});
 
 // Ostatni własny czas: tylko zapis — wyspa już go zna, nie trzeba rozsyłać ustawień.
 ipcMain.on('wyspa:minutnik-wlasny', (_e, minuty) => {
@@ -898,7 +917,16 @@ app.whenReady().then(() => {
       plikUstawien: plikUstawien(),
       schowek: () => JSON.parse(JSON.stringify(schowek)),
       dodajDoSchowka: (sciezki) => { schowek = S.dodaj(schowek, sciezki, Date.now()); zapiszSchowek(); return wyslijSchowek(); },
-      okna: () => ({ wyspa: zyje(oknoWyspa), wyspaWidoczna: zyje(oknoWyspa) && oknoWyspa.isVisible(), ustawienia: zyje(oknoUstawien) })
+      okna: () => ({ wyspa: zyje(oknoWyspa), wyspaWidoczna: zyje(oknoWyspa) && oknoWyspa.isVisible(), ustawienia: zyje(oknoUstawien) }),
+      // udaje pobraną aktualizację; zamiast instalacji atrapa tylko zapisuje wywołanie (instalacje())
+      aktualizacja: (wersja) => {
+        const atrapa = new (require('events'))();
+        atrapa.quitAndInstall = (...a) => { global.__wyspaTest.wywolania.push(a); };
+        aktualizator.podepnij(atrapa);
+        atrapa.emit('update-downloaded', { version: wersja });
+      },
+      wywolania: [],
+      instalacje: () => global.__wyspaTest.wywolania.slice()
     };
   }
 });

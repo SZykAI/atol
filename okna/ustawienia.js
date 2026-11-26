@@ -80,7 +80,8 @@
     zegar: '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>',
     piorun: '<svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>',
     schowek: '<svg viewBox="0 0 24 24"><path d="M3 13h5l1.5 3h5l1.5-3h5"/><path d="M5.6 5h12.8L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5z"/></svg>',
-    mikrofon: '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>'
+    mikrofon: '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>',
+    pobierz: '<svg viewBox="0 0 24 24"><path d="M12 3v11M7.5 9.5 12 14l4.5-4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>'
   };
 
   var MODULY = [
@@ -97,6 +98,7 @@
     { klucz: 'ladowanie', nazwa: 'Ładowarka', opis: 'Podłączenie i odłączenie ładowarki', ikona: 'piorun', kolor: 'zielony' },
     { klucz: 'bateria', nazwa: 'Niski poziom baterii', opis: 'Poniżej 20% i 10%', ikona: 'bateria', kolor: 'zolty' },
     { klucz: 'glosnosc', nazwa: 'Zmiana głośności', opis: 'Pasek głośności przy każdej zmianie', ikona: 'glosnik', kolor: 'niebieski' },
+    { klucz: 'aktualizacja', nazwa: 'Aktualizacja gotowa', opis: 'Gdy nowa wersja się pobierze: „Zainstaluj” albo „Później”', ikona: 'pobierz', kolor: 'niebieski' },
     { klucz: 'timer', nazwa: 'Koniec minutnika', opis: 'Gdy minutnik dobiegnie końca', ikona: 'zegar', kolor: 'pomarancz' }
   ];
 

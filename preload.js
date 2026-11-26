@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld('wyspa', {
 
   naDane: nasluch('wyspa:dane'),
   naPowiadomienie: nasluch('wyspa:powiadomienie'),
+  naAktualizacje: nasluch('wyspa:aktualizacja'),             // { wersja } = pobrana i czeka; null = schowaj
+  aktualizacja: (akcja) => ipcRenderer.send('wyspa:aktualizacja', String(akcja)),   // 'zainstaluj' | 'pozniej'
   naMedia: nasluch('wyspa:media'),
   mediaKomenda: (komenda) => ipcRenderer.send('wyspa:media-komenda', String(komenda)),
   mediaPrzewin: (sekundy, klucz) => ipcRenderer.send('wyspa:media-przewin', Number(sekundy), String(klucz)),

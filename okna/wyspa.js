@@ -4,6 +4,7 @@
  * Stany (od najważniejszego):
  *   rozw     — rozwinięta karta (kliknięcie): multimedia + włączone moduły
  *   powiad   — krótkie powiadomienie (~3 s)
+ *   akt      — „Aktualizacja gotowa” z przyciskami (~15 s; inne stany wyżej ją tylko przerywają)
  *   kompakt  — zwinięta z treścią: okładka + wizualizator (muzyka) i/lub licznik minutnika
  *   pusta    — mała czarna pastylka
  *
@@ -45,6 +46,7 @@
     timer:       { w: 184, h: 34 },
     muzykaTimer: { w: 296, h: 34 },
     powiad:      { w: 344, h: 68, r: 34 },
+    akt:         { w: 344, h: 112, r: 34 },
     rozw:        { w: 372, r: 40 }          // wysokość wynika z treści (mierzona)
   };
 
@@ -225,6 +227,7 @@
   var stan = 'pusta';
   var rozwinieta = false;
   var powiadAktywne = false;
+  var oferta = null;                   // pobrana aktualizacja czekająca na decyzję: { wersja } albo null
   var media = null;
   var przeciaganie = null;             // przewijanie na pasku postępu: { id, klucz, ulamek } albo null
   var timer = null;                    // { koniec: ms, min } albo null
@@ -253,6 +256,7 @@
     }
     if (s === 'rozw') return { w: GEOM.rozw.w, h: wysokoscRozw, r: notch ? 30 : GEOM.rozw.r };
     if (s === 'powiad') return notch ? { w: GEOM.powiad.w, h: GEOM.powiad.h + 2, r: 24 } : GEOM.powiad;
+    if (s === 'akt') return notch ? { w: GEOM.akt.w, h: GEOM.akt.h + 2, r: 28 } : GEOM.akt;
     var g = s === 'kompakt'
       ? (media && timer ? GEOM.muzykaTimer : media ? GEOM.muzyka : GEOM.timer)
       : GEOM.pusta;
@@ -293,7 +297,8 @@
     if (rozwinieta && !maCoRozwinac()) { rozwinieta = false; api.ustawRozwiniecie(false); }
     odswiezStrony();
     var poprzedni = stan;
-    stan = rozwinieta ? 'rozw' : powiadAktywne ? 'powiad' : maKompakt() ? 'kompakt' : 'pusta';
+    stan = rozwinieta ? 'rozw' : powiadAktywne ? 'powiad' : oferta ? 'akt' : maKompakt() ? 'kompakt' : 'pusta';
+    if (stan === 'akt' && poprzedni !== 'akt') pokazanoOferte();
     if (stan !== 'pusta') wcisnieta = false;      // inny stan przejmuje kształt
     if (stan !== 'rozw') koniecPrzewijania(false);   // pasek znika — przewijanie przerwane
     if (stan !== 'rozw') koniecPrzytrzymania();
@@ -304,7 +309,7 @@
     wyspa.classList.toggle('z-muzyka', !!media);
     wyspa.classList.toggle('z-timer', !!timer);
 
-    var duzy = function (s) { return s === 'rozw' || s === 'powiad'; };
+    var duzy = function (s) { return s === 'rozw' || s === 'powiad' || s === 'akt'; };
     var p = wymuszonaSprezyna || (stan === 'powiad' ? P.powiad : duzy(stan) ? P.rozwin : duzy(poprzedni) ? P.zwin : P.kompakt);
     var g = geometria(stan);
     if (stan === 'pusta' && wcisnieta) g = { w: g.w + 16, h: g.h + 4, r: notch ? g.r : (g.h + 4) / 2 };
@@ -330,8 +335,8 @@
   /* ---------- wejście / wyjście treści (każdy element osobno) ---------- */
   // Wejście: od ~25% do ~85% animacji kształtu: opacity 0→1, blur 8→0 px, skala 0,85→1, przesunięcie 8→0 px,
   // elementy kolejno co 45 ms. Wyjście: opacity →0, blur →6 px, skala →0,9 w ~140 ms.
-  var WARSTWY = { kompakt: $('kompakt'), powiad: $('powiad'), rozw: rozwEl };
-  var CZAS_WEJSCIA = { kompakt: 420, powiad: 380, rozw: 540 };   // przybliżony czas sprężyny danego stanu
+  var WARSTWY = { kompakt: $('kompakt'), powiad: $('powiad'), akt: $('akt'), rozw: rozwEl };
+  var CZAS_WEJSCIA = { kompakt: 420, powiad: 380, akt: 460, rozw: 540 };   // przybliżony czas sprężyny danego stanu
   var CZAS_WYJSCIA_MS = 140;
   var OPOZNIENIE_KURCZENIA_MS = 110;  // pastylka zaczyna się kurczyć, gdy treść już prawie zniknęła
   var ODSTEP_MS = 45;                 // stagger
@@ -423,7 +428,9 @@
 
   wyspa.addEventListener('click', function (e) {
     if (!wewnatrz(e.clientX, e.clientY)) return;
-    // przyciski, pliki, pasek przewijania i widok tekstu robią swoje, nie zwijają wyspy
+    // przyciski, pliki, pasek przewijania i widok tekstu robią swoje, nie zwijają wyspy;
+    // przy „Aktualizacja gotowa” także klik obok przycisków nic nie robi (łatwo chybić)
+    if (stan === 'akt') return;
     if (klikZPaska || e.target.closest('button, .sch-plik, .karta.tryb-tekst, .postep.mozna .tor-pole, .minutnik.edycja')) return;
     if (stan === 'rozw') zwin();
     else if (maCoRozwinac()) rozwin();
@@ -1363,6 +1370,12 @@
     if (!z || rozwinieta || sV.cel === 0) return;    // rozwinięta i tak pokazuje dane na żywo
     var o = opisPowiadomienia(z);
     if (!o) return;
+    // kursor na „Aktualizacja gotowa”: nie podmieniamy jej spod myszy — ważne powiadomienie poczeka,
+    // głośność (chwilową) pomijamy
+    if (stan === 'akt' && wewnatrz(mysz.x, mysz.y)) {
+      if (z.typ !== 'glosnosc') zalegle = z;
+      return;
+    }
     $('p-ikona').className = 'p-ikona ' + o.ikona + (o.klasa ? ' ' + o.klasa : '');
     $('p-ikona').innerHTML = IKONY[o.ikona];
     $('p-tytul').textContent = o.tytul;
@@ -1381,9 +1394,60 @@
       z.typ === 'glosnosc' ? CZAS_GLOSNOSCI_MS : CZAS_POWIADOMIENIA_MS);
   }
 
+  /* ====================== aktualizacja gotowa ====================== */
+  // Osobny stan „akt”: czeka pod spodem, gdy coś ważniejszego jest na wierzchu (inne powiadomienie,
+  // rozwinięta wyspa), i wraca po nim. Przy ukrytej wyspie (pełny ekran) licznik stoi.
+
+  var OCHRONA_PRZED_KLIKIEM_MS = 500;   // przyciski pojawiające się pod kursorem nie reagują od razu
+  var licznikOferty = window.AtolOferta.licznik();
+  var tOferty = null, tikOfertyOd = 0, ofertaOd = 0;
+  var zalegle = null;                   // powiadomienie wstrzymane, bo kursor był na ofercie
+
+  function pokazanoOferte() {
+    licznikOferty.odNowa();
+    ofertaOd = tikOfertyOd = performance.now();
+  }
+
+  function pokazZalegle() {
+    var z = zalegle;
+    zalegle = null;
+    if (z) pokazPowiadomienie(z);
+  }
+
+  function tikOferty() {
+    var t = performance.now(), ms = t - tikOfertyOd;
+    tikOfertyOd = t;
+    if (stan !== 'akt') return;
+    var kursor = wewnatrz(mysz.x, mysz.y);
+    if (zalegle && !kursor) { pokazZalegle(); return; }
+    if (licznikOferty.krok(ms, widocznaSystem, kursor)) wybierzOferte('pozniej');
+  }
+
+  function naOferte(o) {
+    oferta = o || null;
+    if (oferta) $('a-opis').textContent = oferta.wersja ? 'Atol ' + oferta.wersja + ' jest już pobrany' : 'Nowa wersja jest już pobrana';
+    if (oferta && !tOferty) tOferty = setInterval(tikOferty, 250);
+    if (!oferta) { clearInterval(tOferty); tOferty = null; }
+    aktualizujStan();
+    if (!oferta) pokazZalegle();
+  }
+
+  function wybierzOferte(akcja) {
+    if (!oferta) return;
+    api.aktualizacja(akcja);
+    naOferte(null);
+  }
+
+  [['a-pozniej', 'pozniej'], ['a-instaluj', 'zainstaluj']].forEach(function (para) {
+    $(para[0]).addEventListener('click', function () {
+      if (stan === 'akt' && performance.now() - ofertaOd >= OCHRONA_PRZED_KLIKIEM_MS) wybierzOferte(para[1]);
+    });
+  });
+
   /* ====================== start ====================== */
 
   api.naUstawienia(naUstawienia);
+  api.naAktualizacje(naOferte);
   api.naDane(naDane);
   api.naMedia(naMedia);
   api.naPoziom(function (p) { poziom.odczyt(p, performance.now()); });   // pętla animacji i tak działa, gdy gra
@@ -1397,6 +1461,7 @@
     naMedia(s.media);
     naTekst(s.tekst);
     naSchowek(s.schowek);
+    naOferte(s.aktualizacja);
     if (s.widoczna) { widocznaSystem = true; zastosujWidocznosc(P.pokaz); }
   }).catch(function () { aktualizujStan(); });
 
