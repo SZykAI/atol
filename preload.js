@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('wyspa', {
   naPowiadomienie: nasluch('wyspa:powiadomienie'),
   naMedia: nasluch('wyspa:media'),
   mediaKomenda: (komenda) => ipcRenderer.send('wyspa:media-komenda', String(komenda)),
+  naTekst: nasluch('wyspa:tekst'),                           // tekst piosenki (albo „szukam” / null)
 
   // schowek na pliki
   naSchowek: nasluch('wyspa:schowek'),

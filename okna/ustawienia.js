@@ -79,11 +79,13 @@
     glosnik: '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
     zegar: '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>',
     piorun: '<svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>',
-    schowek: '<svg viewBox="0 0 24 24"><path d="M3 13h5l1.5 3h5l1.5-3h5"/><path d="M5.6 5h12.8L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5z"/></svg>'
+    schowek: '<svg viewBox="0 0 24 24"><path d="M3 13h5l1.5 3h5l1.5-3h5"/><path d="M5.6 5h12.8L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5z"/></svg>',
+    mikrofon: '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>'
   };
 
   var MODULY = [
     { klucz: 'muzyka', nazwa: 'Muzyka i filmy', opis: 'Okładka i wizualizator, gdy coś gra (Spotify, YouTube…)', ikona: 'nuta', kolor: 'rozowy' },
+    { klucz: 'tekst', nazwa: 'Tekst piosenki', opis: 'Mikrofon w karcie muzyki. Po włączeniu tytuł, wykonawca i długość utworu są wysyłane do lrclib.net', ikona: 'mikrofon', kolor: 'rozowy' },
     { klucz: 'bateria', nazwa: 'Bateria', opis: 'Poziom i ładowanie w rozwiniętej wyspie', ikona: 'bateria', kolor: 'zielony' },
     { klucz: 'procesor', nazwa: 'Procesor', opis: 'Zużycie procesora w rozwiniętej wyspie', ikona: 'cpu', kolor: 'fiolet' },
     { klucz: 'glosnosc', nazwa: 'Głośność', opis: 'Poziom głośności w rozwiniętej wyspie', ikona: 'glosnik', kolor: 'niebieski' },

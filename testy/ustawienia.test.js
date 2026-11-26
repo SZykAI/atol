@@ -29,8 +29,15 @@ test('stare ustawienia z wersji 3.0 (usunięty wyzwalacz okien) nie psują wczyt
 
 test('domyślnie włączona jest muzyka i schowek (pusta pastylka w spoczynku)', () => {
   const u = domyslne();
-  assert.deepEqual(u.moduly, { muzyka: true, bateria: false, procesor: false, glosnosc: false, timer: false, schowek: true });
+  assert.deepEqual(u.moduly, { muzyka: true, tekst: false, bateria: false, procesor: false, glosnosc: false, timer: false, schowek: true });
   assert.equal(u.autostartUstawiony, false);
+});
+
+test('tekst piosenki: domyślnie wyłączony (także dla starych ustawień), włączenie zapamiętane', () => {
+  assert.equal(domyslne().moduly.tekst, false);
+  assert.equal(normalizuj({ moduly: { muzyka: true, schowek: true } }).moduly.tekst, false);
+  assert.equal(normalizuj({ moduly: { tekst: true } }).moduly.tekst, true);
+  assert.equal(normalizuj({ moduly: { tekst: 'tak' } }).moduly.tekst, false);
 });
 
 test('brak pliku, śmieci albo zły typ → ustawienia domyślne', () => {

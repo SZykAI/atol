@@ -201,6 +201,38 @@ body.notch .rozw { padding-top: 20px; }
 .s-btn.glowny.gra .ik-play { display: none; }
 .s-btn.glowny.gra .ik-pauza { display: block; }
 
+/* ---------- tekst piosenki ---------- */
+.s-mik {
+  flex: none; width: 30px; height: 30px; padding: 7px; border: 0; border-radius: 50%;
+  background: rgba(255, 255, 255, .09); color: #fff; cursor: pointer;
+  transition: background-color .15s, transform .2s var(--przejscie-wej);
+}
+.s-mik:hover { background: rgba(255, 255, 255, .18); }
+.s-mik:active { transform: scale(.86); }
+.s-mik.aktywny { background: #fff; color: #000; }
+.s-mik.aktywny:hover { background: #d1d1d6; }
+
+/* w widoku tekstu znikają: góra karty, postęp, kafelki i minutnik (inaczej nie zmieściłby się w płótnie) */
+.karta.tryb-tekst .karta-gora, .karta.tryb-tekst .postep { display: none; }
+.strona.tryb-tekst .kafle, .strona.tryb-tekst .minutnik { display: none; }
+
+.t-naglowek { display: flex; align-items: center; gap: 12px; }
+.t-dopisek { margin-top: 6px; font-size: 11.5px; line-height: 1.3; color: var(--szary); }
+.t-lista {
+  position: relative; height: 240px; margin-top: 8px;
+  overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(transparent, #000 26px, #000 calc(100% - 26px), transparent);
+}
+.t-lista.sync { padding: 100px 0; }       /* żeby pierwsza i ostatnia linia mogły stanąć na środku */
+.t-linia {
+  margin: 0; padding: 5px 2px; overflow-wrap: anywhere;
+  font-size: 16px; font-weight: 600; line-height: 1.3; color: rgba(255, 255, 255, .34);
+  transition: color .3s;
+}
+.t-linia.teraz { color: #fff; }
+.t-lista:not(.sync) { padding: 18px 0; }
+.t-lista:not(.sync) .t-linia { padding: 2px; min-height: 22px; font-size: 14px; font-weight: 500; color: rgba(255, 255, 255, .82); }
+
 /* ---------- kafelki ---------- */
 .kafle { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
 .kafel {
@@ -320,14 +352,6 @@ body.notch .rozw { padding-top: 20px; }
 .sch-plik:hover .sch-usun, .sch-plik.brak .sch-usun { opacity: 1; transform: scale(1); }
 .sch-usun:hover { background: var(--czerwony); }
 
-.sch-pusty {
-  display: flex; align-items: center; gap: 12px;
-  padding: 16px 16px; border-radius: 18px;
-  border: 1.5px dashed rgba(255, 255, 255, .18);
-  font-size: 12.5px; color: var(--szary); line-height: 1.35;
-}
-.sch-pusty .sch-strzalka { width: 26px; height: 26px; flex: none; color: rgba(255, 255, 255, .4); }
-
 /* przeciąganie pliku nad wyspą: niebieska strefa "Upuść" na całej stronie schowka */
 .sch-upusc {
   position: absolute; inset: 0; z-index: 2;
@@ -344,6 +368,19 @@ body.notch .rozw { padding-top: 20px; }
 .rozw.upuszczanie #strona-schowek { min-height: 128px; }
 .rozw.upuszczanie .sch-upusc .sch-strzalka { animation: sch-podskok .9s ease-in-out infinite; }
 @keyframes sch-podskok { 50% { transform: translateY(4px); } }
+
+/* pusty schowek: mały pasek — ikona po lewej, „0” po prawej. Reguły muszą być PO regułach upuszczania. */
+.rozw.pasek { width: 184px; height: 34px; margin-left: -92px; padding: 0; }
+body.notch .rozw.pasek { top: 1px; padding-top: 0; }
+.rozw.pasek #strona-schowek { min-height: 0; }
+.rozw.pasek .sch-naglowek, .rozw.pasek .sch-lista, .rozw.pasek .sch-upusc, .rozw.pasek .kropki { display: none; }
+.sch-zero { height: 34px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px 0 12px; }
+.sch-zero > span { display: flex; }
+.sch-zero strong { display: block; font-size: 16px; font-weight: 700; line-height: 18px; }
+.sch-zero .sch-ikona, .sch-zero strong { transition: transform .3s var(--przejscie-wej); }
+/* plik nad paskiem: kształt lekko rośnie, ikona i liczba jadą za jego krawędziami */
+.rozw.pasek.upuszczanie .sch-zero .sch-ikona { transform: translate(-7px, 3px) scale(1.15); }
+.rozw.pasek.upuszczanie .sch-zero strong { transform: translate(7px, 3px) scale(1.15); }
 
 /* nowo dodany plik: krótkie "wskoczenie" */
 .sch-plik.nowy { animation: sch-nowy .5s var(--przejscie-wej); }

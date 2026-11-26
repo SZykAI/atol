@@ -46,11 +46,25 @@
               <span id="r-wykonawca"></span>
             </div>
             <span class="viz duzy" id="r-viz" data-a><i></i><i></i><i></i><i></i><i></i></span>
+            <!-- mikrofon: widoczny tylko, gdy jest tekst piosenki -->
+            <button type="button" class="s-mik" id="s-mik" aria-label="Pokaż tekst piosenki" title="Tekst piosenki" data-ikona="mikrofon" data-a hidden></button>
           </div>
           <div class="postep" id="r-postep" data-a>
             <span id="r-poz">0:00</span>
             <div class="tor"><div class="wyp" id="r-wyp"></div></div>
             <span id="r-zostalo">-0:00</span>
+          </div>
+          <!-- widok tekstu: zastępuje górę karty i pasek postępu, przyciski zostają pod spodem -->
+          <div class="tekst-widok" id="tekst-widok" hidden>
+            <div class="t-naglowek" data-a>
+              <div class="opis">
+                <strong id="t-tytul"></strong>
+                <span id="t-wykonawca"></span>
+              </div>
+              <button type="button" class="s-mik aktywny" id="t-mik" aria-label="Wróć do karty utworu" title="Wróć do karty utworu" data-ikona="mikrofon"></button>
+            </div>
+            <div class="t-dopisek" id="t-dopisek" data-a hidden>bez synchronizacji</div>
+            <div class="t-lista" id="t-lista" data-a></div>
           </div>
           <div class="sterowanie" data-a>
             <button type="button" class="s-btn" id="s-prev" aria-label="Poprzedni utwór" data-ikona="prev"></button>
@@ -104,9 +118,10 @@
         </div>
         <!-- data-a: lista chowa się razem z resztą rozwiniętej treści (bez tego wystawała spod powiadomień) -->
         <div class="sch-lista" id="sch-lista" data-a></div>
-        <div class="sch-pusty" id="sch-pusty" data-a>
-          <span class="sch-strzalka" data-ikona="upusc"></span>
-          <span>Przeciągnij tu plik — poczeka, aż będzie potrzebny</span>
+        <!-- pusty schowek: zamiast panelu mały pasek (rozmiar i klasę .pasek ustawia wyspa.js) -->
+        <div class="sch-zero" id="sch-zero" aria-label="Schowek: 0 plików">
+          <span data-a><span class="sch-ikona" data-ikona="schowek"></span></span>
+          <span data-a><strong>0</strong></span>
         </div>
         <div class="sch-upusc" id="sch-upusc" aria-hidden="true">
           <span class="sch-strzalka" data-ikona="upusc"></span>

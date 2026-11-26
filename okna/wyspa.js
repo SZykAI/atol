@@ -18,6 +18,8 @@
  *
  * Rozwinięta wyspa ma dwie strony (4.1), przełączane kółkiem myszy: 1 — muzyka, kafelki, minutnik;
  * 2 — schowek na pliki. Plik przeciągnięty nad wyspę sam ją rozwija na stronie schowka.
+ * Pusty schowek to nie duży panel, tylko mały pasek (ikona i „0”) — dalej w stanie „rozw”.
+ * Karta muzyki ma drugi widok: tekst piosenki (mikrofon; moduł „tekst” w ustawieniach).
  */
 (function () {
   'use strict';
@@ -63,7 +65,8 @@
     upusc: '<svg viewBox="0 0 24 24"><path d="M12 3v11M7.5 9.5 12 14l4.5-4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>',
     plik: '<svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>',
     folder: '<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
-    x: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>'
+    x: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+    mikrofon: '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>'
   };
 
   Array.prototype.forEach.call(document.querySelectorAll('[data-ikona]'), function (el) {
@@ -210,7 +213,7 @@
     przechwytuje = v;
     api.ignorujMysz(!v);
   }
-  function sprawdzMysz() { ustawPrzechwytywanie(wewnatrz(mysz.x, mysz.y)); }
+  function sprawdzMysz() { ustawPrzechwytywanie(wewnatrz(mysz.x, mysz.y) || wStrefieUpuszczania(mysz.x, mysz.y)); }
 
   document.addEventListener('mousemove', function (e) { mysz.x = e.clientX; mysz.y = e.clientY; sprawdzMysz(); });
   document.addEventListener('mouseleave', function () { mysz.x = mysz.y = -1; ustawPrzechwytywanie(false); });
@@ -237,6 +240,12 @@
   function maCoRozwinac() { return maGlowna() || !!ustawienia.moduly.schowek; }
 
   function geometria(s) {
+    if (s === 'rozw' && jestPasek()) {
+      // pusty schowek: pasek wielkości zwiniętej wyspy; z plikiem nad nim lekko większy
+      var d = upuszczanie.aktywne ? 1 : 0;
+      var hp = GEOM.timer.h + (notch ? 2 : 0) + d * 6;
+      return { w: GEOM.timer.w + d * 16, h: hp, r: notch ? 12 : hp / 2 };
+    }
     if (s === 'rozw') return { w: GEOM.rozw.w, h: wysokoscRozw, r: notch ? 30 : GEOM.rozw.r };
     if (s === 'powiad') return notch ? { w: GEOM.powiad.w, h: GEOM.powiad.h + 2, r: 24 } : GEOM.powiad;
     var g = s === 'kompakt'
@@ -305,6 +314,7 @@
       if (stara && zmniejsza) opoznienie = OPOZNIENIE_KURCZENIA_MS;
       if (nowa) animujWejscie(nowa, opoznienie, CZAS_WEJSCIA[stan]);
     }
+    pilnujTekstu();
     var ustawKsztalt = function () { sW.ustaw(g.w, p); sH.ustaw(g.h, p); sR.ustaw(g.r, p); };
     if (opoznienie) tKsztaltu = setTimeout(ustawKsztalt, opoznienie);
     else ustawKsztalt();
@@ -367,6 +377,7 @@
     rozwinieta = true;
     powiadAktywne = false;
     clearTimeout(tPowiad);
+    ustawTrybTekstu(false, false);                    // po zwinięciu zawsze zaczynamy od zwykłej karty
     pokazStrone(naStrone === 1 || !maGlowna() ? 1 : 0);
     wysokoscRozw = Math.ceil(rozwEl.offsetHeight);
     aktualizujStan();
@@ -404,7 +415,8 @@
 
   wyspa.addEventListener('click', function (e) {
     if (!wewnatrz(e.clientX, e.clientY)) return;
-    if (e.target.closest('button, .sch-plik')) return;   // przyciski i pliki robią swoje, nie zwijają wyspy
+    // przyciski, pliki i widok tekstu robią swoje, nie zwijają wyspy
+    if (e.target.closest('button, .sch-plik, .karta.tryb-tekst')) return;
     if (stan === 'rozw') zwin();
     else if (maCoRozwinac()) rozwin();
     else if (stan === 'powiad') { powiadAktywne = false; aktualizujStan(); }
@@ -420,7 +432,7 @@
       var h = Math.ceil(rozwEl.offsetHeight);
       if (h === wysokoscRozw) return;
       wysokoscRozw = h;
-      if (stan === 'rozw') sH.ustaw(h);
+      if (stan === 'rozw' && !jestPasek()) sH.ustaw(h);
     }).observe(rozwEl);
   }
 
@@ -450,7 +462,18 @@
     });
     stronaGlowna.hidden = n !== 0;
     stronaSchowek.hidden = n !== 1;
+    ukladSchowka();
     odswiezKropki();
+    pilnujTekstu();
+  }
+
+  // Pusty schowek na ekranie → mały pasek zamiast panelu
+  function jestPasek() { return wyswietlona === 1 && !schowekLista.length; }
+
+  // Po wywołaniu trzeba zawołać aktualizujStan (nowy rozmiar kształtu)
+  function ukladSchowka() {
+    rozwEl.classList.toggle('pasek', jestPasek());
+    wysokoscRozw = Math.ceil(rozwEl.offsetHeight);
   }
 
   function odswiezStrony() {
@@ -485,6 +508,7 @@
         e.animate([{ opacity: 0, filter: 'blur(8px)', transform: 'translateY(' + (wDol ? 16 : -16) + 'px) scale(.96)' }, WIDOCZNY],
           { duration: 380, delay: i * 40, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'backwards' });
       });
+      if (stan === 'rozw') aktualizujStan();
     }, 120);
   }
 
@@ -492,6 +516,7 @@
   var kolko = { suma: 0, blokada: 0, t: null };
   wyspa.addEventListener('wheel', function (e) {
     if (stan !== 'rozw' || !rozwEl.classList.contains('dwie-strony')) return;
+    if (e.target.closest && e.target.closest('.t-lista')) return;   // nad tekstem kółko przewija tylko tekst
     var lista = e.target.closest && e.target.closest('.sch-lista');
     if (lista && strona === 1) {
       if (e.deltaY > 0 && lista.scrollTop + lista.clientHeight < lista.scrollHeight - 1) return;
@@ -509,14 +534,15 @@
   }, { passive: true });
 
   /* ====================== schowek na pliki ====================== */
-  // Przeciągnięcie pliku nad wyspę: rozwija się na stronie schowka z niebieską strefą "Upuść".
+  // Przeciągnięcie pliku nad wyspę: rozwija się na stronie schowka z niebieską strefą "Upuść"
+  // (pusty schowek: mały pasek, który z plikiem nad nim lekko rośnie).
   // Okno wyspy przepuszcza mysz poza kształtem, więc pliki można upuścić tylko na sam kształt —
   // gdy kursor z plikiem z niego zjedzie, oddajemy okno aplikacji pod spodem.
 
   var schowekLista = [];
   var nowePliki = null;                 // ścieżki właśnie upuszczone (dostaną animację "wskoczenia")
   var wlasnePrzeciaganie = false;       // plik wyciągany Z wyspy — nie traktuj go jak nowego
-  var upuszczanie = { aktywne: false, bylaRozw: false, bylaStrona: 0, t: null };
+  var upuszczanie = { aktywne: false, bylaRozw: false, bylaStrona: 0, strefa: null, t: null };
   var tPoUpuszczeniu = null;
 
   function odmianaPlikow(n) {
@@ -561,8 +587,27 @@
     });
     nowePliki = null;
     var ile = schowekLista.length;
-    $('sch-pusty').hidden = ile > 0;
+    $('sch-zero').hidden = ile > 0;
     $('sch-licznik').textContent = ile ? ile + ' ' + odmianaPlikow(ile) : '';
+    // pierwszy plik albo usunięcie ostatniego: podmiana pasek ↔ lista
+    if (rozwEl.classList.contains('pasek') !== jestPasek()) {
+      ukladSchowka();
+      if (stan !== 'rozw') return;
+      elementy(stronaSchowek).forEach(function (e, i) {
+        e.getAnimations().forEach(function (a) { a.cancel(); });
+        e.animate([SCHOWANY_WEJ, WIDOCZNY],
+          { duration: 380, delay: i * 40, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'backwards' });
+      });
+      aktualizujStan();
+    }
+  }
+
+  // Panel kurczy się w pasek pod kursorem z plikiem. Żeby wyspa nie migotała (zwiń → rozwiń → ...),
+  // do końca przeciągania celem jest też miejsce, które zajmowała na jego początku.
+  function wStrefieUpuszczania(x, y) {
+    var s = upuszczanie.strefa;
+    if (!upuszczanie.aktywne || !s || schowekLista.length) return false;
+    return Math.abs(x - (PLOTNO_X + PLOTNO_W / 2)) <= s.w / 2 && y >= plotnoY && y <= plotnoY + s.h;
   }
 
   function maPliki(e) {
@@ -574,6 +619,7 @@
     clearTimeout(upuszczanie.t);
     upuszczanie.aktywne = false;
     rozwEl.classList.remove('upuszczanie');
+    if (stan === 'rozw' && jestPasek()) aktualizujStan();     // pasek wraca do zwykłego rozmiaru
   }
 
   // Plik odjechał z wyspy bez upuszczenia — wracamy do tego, co było przed
@@ -588,7 +634,7 @@
   function nadWyspa(e) {
     if (!ustawienia.moduly.schowek || wlasnePrzeciaganie || sV.cel !== 1 || !maPliki(e)) return;
     mysz.x = e.clientX; mysz.y = e.clientY;
-    if (!wewnatrz(e.clientX, e.clientY)) {
+    if (!wewnatrz(e.clientX, e.clientY) && !wStrefieUpuszczania(e.clientX, e.clientY)) {
       // nad przezroczystą częścią okna — nie przyjmujemy; oddajemy okno temu, co jest pod spodem
       anulujUpuszczanie();
       ustawPrzechwytywanie(false);
@@ -600,10 +646,13 @@
       upuszczanie.aktywne = true;
       upuszczanie.bylaRozw = rozwinieta;
       upuszczanie.bylaStrona = strona;
+      var k = ksztalt();
+      upuszczanie.strefa = { w: k.w, h: k.h };
       clearInterval(tPoUpuszczeniu);
       ustawPrzechwytywanie(true);
       if (!rozwinieta) rozwin(1);
-      else zmienStrone(1);
+      else if (strona !== 1) zmienStrone(1);
+      else aktualizujStan();                 // już na schowku — pasek ma urosnąć
       rozwEl.classList.add('upuszczanie');
     }
     // dragover przychodzi co ~50 ms, także gdy kursor stoi — brak przez 300 ms = plik opuścił wyspę
@@ -856,7 +905,11 @@
       oczekiwanaGra = null;
       oklMala.ustaw(null, false);
       oklDuza.ustaw(null, false);
+      ustawTrybTekstu(false, false);
     }
+    $('t-tytul').textContent = media ? media.tytul || 'Bez tytułu' : '';
+    $('t-wykonawca').textContent = media ? media.wykonawca || media.album || media.zrodlo || '' : '';
+    odswiezMikrofon();
     el.karta.hidden = !media;
     aktualizujStan();
     budz();
@@ -878,6 +931,125 @@
     api.mediaKomenda('toggle');
   });
   el.next.addEventListener('click', function () { api.mediaKomenda('next'); });
+
+  /* ====================== tekst piosenki ====================== */
+  // Dane z procesu głównego: null, { klucz, szukam } albo { klucz, synchroniczny, linie: [{ czas?, tekst }] }.
+  // Teksty pochodzą z internetu — wstawiamy je wyłącznie przez textContent.
+
+  var slowa = null;
+  var trybTekstu = false;
+  var tTikTekstu = null;
+  var liniaTeraz = -1, przewinietoDo = null, recznieDo = 0;
+  var WYPRZEDZENIE_S = 0.25;            // linia zapala się odrobinę przed czasem — tak się lepiej czyta
+  var PRZERWA_PO_PRZEWINIECIU_MS = 3000;
+  var tLista = $('t-lista');
+  var mniejRuchu = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  function maTekst() {
+    return !!(media && slowa && slowa.klucz === media.klucz && slowa.linie && slowa.linie.length);
+  }
+
+  function odswiezMikrofon() {
+    var b = $('s-mik'), pokaz = maTekst();
+    if (b.hidden !== pokaz) return;               // bez zmian
+    b.hidden = !pokaz;
+    if (pokaz && stan === 'rozw' && !trybTekstu) {
+      b.animate([{ opacity: 0, transform: 'scale(.5)' }, WIDOCZNY], { duration: 320, easing: 'cubic-bezier(.3, 1.45, .55, 1)' });
+    }
+  }
+
+  function wypelnijTekst() {
+    var gotowy = maTekst();
+    var sync = gotowy && !!slowa.synchroniczny;
+    tLista.textContent = '';
+    tLista.classList.toggle('sync', sync);
+    $('t-dopisek').hidden = !gotowy || sync;
+    (gotowy ? slowa.linie : [{ tekst: 'Szukam tekstu…' }]).forEach(function (l) {
+      var p = document.createElement('p');
+      p.className = 't-linia';
+      p.textContent = l.tekst || (sync ? '♪' : ' ');
+      tLista.appendChild(p);
+    });
+    tLista.scrollTop = 0;
+    liniaTeraz = -1;
+    przewinietoDo = null;
+    recznieDo = 0;
+  }
+
+  // Podświetla trwającą linię i przewija listę tak, żeby była na środku
+  function tikTekstu(odRazu) {
+    if (!maTekst() || !slowa.synchroniczny) return;
+    var p = pozycjaTeraz() + WYPRZEDZENIE_S, i = -1;
+    while (i + 1 < slowa.linie.length && slowa.linie[i + 1].czas <= p) i++;
+    var linie = tLista.children;
+    if (i !== liniaTeraz) {
+      if (linie[liniaTeraz]) linie[liniaTeraz].classList.remove('teraz');
+      if (linie[i]) linie[i].classList.add('teraz');
+      liniaTeraz = i;
+    }
+    if (!odRazu && (performance.now() < recznieDo || przewinietoDo === i)) return;
+    var cel = linie[Math.max(0, i)];
+    if (!cel) return;
+    przewinietoDo = i;
+    tLista.scrollTo({
+      top: cel.offsetTop - (tLista.clientHeight - cel.offsetHeight) / 2,
+      behavior: odRazu || mniejRuchu.matches ? 'auto' : 'smooth'
+    });
+  }
+
+  // Odświeżanie działa tylko, gdy widok tekstu naprawdę widać
+  function pilnujTekstu() {
+    var widac = trybTekstu && stan === 'rozw' && wyswietlona === 0 && sV.cel === 1 && maTekst() && slowa.synchroniczny;
+    if (widac && !tTikTekstu) {
+      tTikTekstu = setInterval(tikTekstu, 150);
+      tikTekstu(true);
+    } else if (!widac && tTikTekstu) {
+      clearInterval(tTikTekstu);
+      tTikTekstu = null;
+    }
+  }
+
+  function ustawTrybTekstu(wlacz, animuj) {
+    if (wlacz === trybTekstu) return;
+    trybTekstu = wlacz;
+    [].forEach.call(stronaGlowna.querySelectorAll('[data-a]'), function (e) {
+      e.getAnimations().forEach(function (a) { a.cancel(); });
+    });
+    el.karta.classList.toggle('tryb-tekst', wlacz);
+    stronaGlowna.classList.toggle('tryb-tekst', wlacz);
+    $('tekst-widok').hidden = !wlacz;
+    if (wlacz) wypelnijTekst();
+    if (animuj && stan === 'rozw' && wyswietlona === 0) {
+      elementy(stronaGlowna).forEach(function (e, i) {
+        e.animate([SCHOWANY_WEJ, WIDOCZNY],
+          { duration: 360, delay: i * 40, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'backwards' });
+      });
+    }
+    clearInterval(tTikTekstu);
+    tTikTekstu = null;
+    pilnujTekstu();
+  }
+
+  function naTekst(t) {
+    slowa = t && typeof t === 'object' && t.klucz ? t : null;
+    // utwór bez tekstu → zwykła karta; w trakcie szukania (zmiana utworu) widok tekstu zostaje
+    if (!slowa || (!slowa.szukam && !(slowa.linie && slowa.linie.length))) ustawTrybTekstu(false, true);
+    else if (trybTekstu) {
+      wypelnijTekst();
+      clearInterval(tTikTekstu);
+      tTikTekstu = null;
+    }
+    odswiezMikrofon();
+    pilnujTekstu();
+  }
+
+  $('s-mik').addEventListener('click', function () { if (maTekst()) ustawTrybTekstu(true, true); });
+  $('t-mik').addEventListener('click', function () { ustawTrybTekstu(false, true); });
+  // ręczne przewijanie: przez chwilę nie wracamy sami do aktualnej linii
+  tLista.addEventListener('wheel', function () {
+    recznieDo = performance.now() + PRZERWA_PO_PRZEWINIECIU_MS;
+    przewinietoDo = null;
+  }, { passive: true });
 
   /* ====================== dane systemowe (kafelki) ====================== */
 
@@ -1043,6 +1215,7 @@
   api.naUstawienia(naUstawienia);
   api.naDane(naDane);
   api.naMedia(naMedia);
+  api.naTekst(naTekst);
   api.naPowiadomienie(pokazPowiadomienie);
   api.naSchowek(naSchowek);
 
@@ -1050,6 +1223,7 @@
     naUstawienia(s.ustawienia);
     naDane(s.dane);
     naMedia(s.media);
+    naTekst(s.tekst);
     naSchowek(s.schowek);
     if (s.widoczna) { widocznaSystem = true; zastosujWidocznosc(P.pokaz); }
   }).catch(function () { aktualizujStan(); });

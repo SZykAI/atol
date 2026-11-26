@@ -24,6 +24,7 @@ const S = require('./lib/schowek');
 const MARKA = require('./lib/marka');
 const AKT = require('./lib/aktualizacje');
 const { utworzFiltrGrania } = require('./lib/granie');
+const { utworzTeksty } = require('./lib/tekst');
 
 // ---------- stałe ----------
 const SZEROKOSC_OKNA_WYSPY = 440;   // okno jest stałe i większe niż pastylka — zmienia się tylko pastylka (CSS)
@@ -111,6 +112,7 @@ function zastosujUstawienia() {
   wykryjZdarzenia = utworzDetektor();      // po włączeniu modułu nie porównuj ze starym odczytem
   wyslijDoPomocnika('media ' + (ustawienia.moduly.muzyka ? 1 : 0));
   if (!ustawienia.moduly.muzyka) ustawMedia(null);
+  odswiezTekst(true);                      // przełącznik tekstu: pobierz od razu albo wyczyść
 }
 
 /* ===================== schowek na pliki ===================== */
@@ -537,6 +539,43 @@ function sciezkaSkryptu(nazwa) {
 function ustawMedia(stan) {
   ostatniaMedia = stan;
   doWyspy('wyspa:media', stan);
+  odswiezTekst();
+}
+
+/* ----- tekst piosenki (lib/tekst.js, lrclib.net) — tylko przy włączonych modułach „muzyka” i „tekst” ----- */
+const OPOZNIENIE_TEKSTU_MS = 800;   // przy szybkim przeskakiwaniu utworów nie pytamy o każdy
+const teksty = utworzTeksty({ fetch: (adres, opcje) => fetch(adres, opcje), dbg: (...a) => dbg(...a) });
+let ostatniTekst = null;            // stan wysłany do wyspy: null | { klucz, szukam } | { klucz, synchroniczny, linie }
+let zapytanieTekstu = null;         // { klucz, dlugosc } — utwór, którego tekst pobieramy albo już pobraliśmy
+let tTekstu = null;
+
+function ustawTekst(t) {
+  ostatniTekst = t;
+  doWyspy('wyspa:tekst', t);
+}
+
+function odswiezTekst(odRazu) {
+  const m = ostatniaMedia;
+  if (!m || !ustawienia.moduly.tekst || !ustawienia.moduly.muzyka) {
+    clearTimeout(tTekstu);
+    zapytanieTekstu = null;
+    if (ostatniTekst) ustawTekst(null);
+    return;
+  }
+  const nowyUtwor = !zapytanieTekstu || zapytanieTekstu.klucz !== m.klucz;
+  // ten sam utwór: pytamy ponownie tylko, gdy odtwarzacz dopiero teraz podał (inną) długość
+  if (!nowyUtwor && !(m.dlugosc > 0 && Math.abs(m.dlugosc - zapytanieTekstu.dlugosc) > 3)) return;
+  const z = { klucz: m.klucz, dlugosc: m.dlugosc };
+  zapytanieTekstu = z;
+  clearTimeout(tTekstu);
+  if (nowyUtwor) ustawTekst({ klucz: z.klucz, szukam: true });
+  tTekstu = setTimeout(async () => {
+    if (zapytanieTekstu !== z || !ostatniaMedia) return;
+    z.dlugosc = ostatniaMedia.dlugosc;
+    const wynik = await teksty.pobierz(ostatniaMedia).catch((e) => { dbg('tekst:', e.message); return null; });
+    if (zapytanieTekstu !== z) return;          // spóźniona odpowiedź: inny utwór albo wyłączony moduł
+    ustawTekst(wynik ? { klucz: z.klucz, ...wynik } : null);
+  }, odRazu ? 0 : OPOZNIENIE_TEKSTU_MS);
 }
 
 function przetworzMedia(s) {
@@ -651,7 +690,8 @@ const DOZWOLONE_KOMENDY_MEDIA = new Set(['toggle', 'next', 'prev']);
 
 // widoczna: czy okno już jest pokazane (np. strona została przeładowana) — wtedy wyspa od razu się wysuwa
 ipcMain.handle('wyspa:start', async () => ({
-  ustawienia, dane: ostatnieDane, media: ostatniaMedia, schowek: await opisSchowka(),
+  ustawienia, dane: ostatnieDane, schowek: await opisSchowka(),
+  media: ostatniaMedia, tekst: ostatniTekst,       // czytane PO await — oba z tej samej chwili
   widoczna: zyje(oknoWyspa) && oknoWyspa.isVisible() && !pelnyEkran
 }));
 
@@ -792,6 +832,7 @@ app.whenReady().then(() => {
     global.__wyspaTest = {
       zdarzenie: (z) => doWyspy('wyspa:powiadomienie', z),
       media: (m) => ustawMedia(m),
+      tekst: () => ostatniTekst,
       dane: (d) => { ostatnieDane = d; doWyspy('wyspa:dane', d); },
       pelny: (v) => ustawPelnyEkran(!!v),
       pomocnik: (obiekt) => przetworzLiniePomocnika(JSON.stringify(obiekt)),   // udaje linię z pomocnika
