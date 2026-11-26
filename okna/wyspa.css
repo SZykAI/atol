@@ -268,10 +268,10 @@ body.notch .rozw { padding-top: 20px; }
   background: rgba(255, 255, 255, .075);
 }
 .minutnik .kafel-ikona { color: var(--pomarancz); }
-.m-czas { flex: 1; font-size: 14.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.m-czas { flex: 1; min-width: 0; white-space: nowrap; font-size: 14.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .minutnik.dziala .m-czas { color: var(--pomarancz); font-size: 17px; }
 .minutnik.koniec .m-czas { color: var(--zielony); }
-.m-chipy { display: flex; align-items: center; gap: 5px; }
+.m-chipy { display: flex; align-items: center; gap: 4px; }
 .m-min { font-size: 11.5px; color: var(--szary); margin-left: 2px; }
 .minutnik .stop { display: none; }
 .minutnik.dziala .m-chipy { display: none; }
@@ -287,6 +287,24 @@ body.notch .rozw { padding-top: 20px; }
 .chip:active { transform: scale(.9); }
 .chip.stop { background: rgba(255, 159, 10, .2); color: var(--pomarancz); padding: 5px 12px; }
 .chip.stop:hover { background: rgba(255, 159, 10, .3); }
+
+/* własny czas: edytor zastępuje napis i gotowe czasy w tym samym wierszu (wysokość wyspy się nie zmienia).
+   Reguły muszą być PO .chip. */
+.chip.m-wlasny { color: var(--pomarancz); font-size: 15px; line-height: 15px; }
+.m-edytor { display: none; flex: 1; align-items: center; gap: 6px; }
+.minutnik.edycja .m-czas, .minutnik.edycja .m-chipy { display: none; }
+.minutnik.edycja .m-edytor { display: flex; animation: m-wejscie .3s var(--przejscie-wej); }
+@keyframes m-wejscie { from { opacity: 0; transform: scale(.94); } }
+.chip.m-krok { width: 34px; height: 27px; padding: 0; font-size: 18px; line-height: 18px; touch-action: none; }
+.chip.m-krok.kres { opacity: .35; }
+.m-wartosc {
+  min-width: 66px; text-align: center; white-space: nowrap;
+  font-size: 16px; font-weight: 600; color: var(--pomarancz); font-variant-numeric: tabular-nums;
+}
+.chip.m-start { margin-left: auto; padding: 5px 14px; background: var(--pomarancz); color: #000; }
+.chip.m-start:hover { background: #ffb340; }
+.chip.m-wroc { min-width: 27px; width: 27px; height: 27px; padding: 8px; }
+.chip.m-wroc svg { stroke-width: 2.6; }
 
 
 /* ===================== strony rozwiniętej wyspy (4.1) ===================== */
@@ -396,5 +414,5 @@ body.notch .rozw.pasek { top: 1px; padding-top: 0; }
 @keyframes sch-nowy { from { opacity: 0; transform: scale(.6); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .rozw.upuszczanie .sch-upusc .sch-strzalka, .sch-plik.nowy { animation: none; }
+  .rozw.upuszczanie .sch-upusc .sch-strzalka, .sch-plik.nowy, .minutnik.edycja .m-edytor { animation: none; }
 }

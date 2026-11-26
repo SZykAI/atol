@@ -23,6 +23,11 @@ contextBridge.exposeInMainWorld('wyspa', {
   mediaPrzewin: (sekundy, klucz) => ipcRenderer.send('wyspa:media-przewin', Number(sekundy), String(klucz)),
   naTekst: nasluch('wyspa:tekst'),                           // tekst piosenki (albo „szukam” / null)
 
+  // minutnik: proces główny budzi wyspę o godzinie końca (timery ukrytego okna są spowalniane)
+  minutnik: (koniec) => ipcRenderer.send('wyspa:minutnik', Number(koniec)),       // 0 = zatrzymany
+  naMinutnikTik: nasluch('wyspa:minutnik-tik'),
+  minutnikWlasny: (minuty) => ipcRenderer.send('wyspa:minutnik-wlasny', Number(minuty)),
+
   // schowek na pliki
   naSchowek: nasluch('wyspa:schowek'),
   // ścieżka upuszczonego pliku (od Electrona 32 nie ma już File.path — trzeba zapytać webUtils)
@@ -42,6 +47,7 @@ contextBridge.exposeInMainWorld('panel', {
   ustawAutostart: (wartosc) => ipcRenderer.send('panel:autostart', !!wartosc),
   ustawWyglad: (styl) => ipcRenderer.send('panel:wyglad', String(styl)),     // 'pastylka' | 'notch'
   ustawAktualizacje: (wartosc) => ipcRenderer.send('panel:aktualizacje', !!wartosc),
+  ustawDzwiekMinutnika: (wartosc) => ipcRenderer.send('panel:dzwiek-minutnika', !!wartosc),
   aktualizuj: (akcja) => ipcRenderer.send('panel:aktualizuj', String(akcja)),   // 'sprawdz' | 'zainstaluj'
   wyspa: (akcja) => ipcRenderer.send('panel:wyspa', String(akcja))
 });

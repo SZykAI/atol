@@ -105,6 +105,15 @@
             <button type="button" class="chip" data-min="10">10</button>
             <button type="button" class="chip" data-min="25">25</button>
             <span class="m-min">min</span>
+            <button type="button" class="chip m-wlasny" id="m-wlasny" aria-label="Własny czas" title="Własny czas">±</button>
+          </div>
+          <!-- własny czas: −/+ (przytrzymanie przyspiesza) albo kółko myszy -->
+          <div class="m-edytor" id="m-edytor">
+            <button type="button" class="chip m-krok" id="m-mniej" aria-label="Krócej">−</button>
+            <strong class="m-wartosc" id="m-wartosc" aria-live="polite">15 min</strong>
+            <button type="button" class="chip m-krok" id="m-wiecej" aria-label="Dłużej">+</button>
+            <button type="button" class="chip m-start" id="m-start">Start</button>
+            <button type="button" class="chip m-wroc" id="m-wroc" aria-label="Wróć do gotowych czasów" title="Wróć" data-ikona="x"></button>
           </div>
           <button type="button" class="chip stop" id="m-stop">Zatrzymaj</button>
         </section>
@@ -136,6 +145,8 @@
     </div>
   </div>
 
+  <script src="../lib/minutnik.js"></script>
+  <script src="dzwiek.js"></script>
   <script src="wyspa.js"></script>
 </body>
 </html>

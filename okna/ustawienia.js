@@ -89,7 +89,7 @@
     { klucz: 'bateria', nazwa: 'Bateria', opis: 'Poziom i ładowanie w rozwiniętej wyspie', ikona: 'bateria', kolor: 'zielony' },
     { klucz: 'procesor', nazwa: 'Procesor', opis: 'Zużycie procesora w rozwiniętej wyspie', ikona: 'cpu', kolor: 'fiolet' },
     { klucz: 'glosnosc', nazwa: 'Głośność', opis: 'Poziom głośności w rozwiniętej wyspie', ikona: 'glosnik', kolor: 'niebieski' },
-    { klucz: 'timer', nazwa: 'Minutnik', opis: '1 / 5 / 10 / 25 min, licznik na zwiniętej wyspie', ikona: 'zegar', kolor: 'pomarancz' },
+    { klucz: 'timer', nazwa: 'Minutnik', opis: '1 / 5 / 10 / 25 min albo własny czas, licznik na zwiniętej wyspie', ikona: 'zegar', kolor: 'pomarancz' },
     { klucz: 'schowek', nazwa: 'Schowek na pliki', opis: 'Przeciągnij plik na wyspę — poczeka tam (kółkiem w dół na rozwiniętej)', ikona: 'schowek', kolor: 'zolty' }
   ];
 
@@ -127,6 +127,19 @@
   POWIADOMIENIA.forEach(function (p) {
     $('powiadomienia').appendChild(wiersz(p, 'pow-' + p.klucz, function (v) { api.ustawPowiadomienie(p.klucz, v); }));
   });
+
+  // dźwięk minutnika: przełącznik + "Odsłuchaj" (gra od razu, niezależnie od przełącznika)
+  var wierszDzwieku = wiersz(
+    { nazwa: 'Dźwięk minutnika', opis: 'Krótki, łagodny sygnał po końcu odliczania', ikona: 'glosnik', kolor: 'pomarancz' },
+    'dzwiek-minutnika', function (v) { api.ustawDzwiekMinutnika(v); });
+  var odsluch = document.createElement('button');
+  odsluch.type = 'button';
+  odsluch.className = 'btn';
+  odsluch.id = 'btn-odsluchaj';
+  odsluch.textContent = 'Odsłuchaj';
+  odsluch.addEventListener('click', function () { window.AtolDzwiek.zagraj(); });
+  wierszDzwieku.insertBefore(odsluch, wierszDzwieku.querySelector('.przelacznik'));
+  $('powiadomienia').appendChild(wierszDzwieku);
 
   /* ====================== przyciski i przełączniki ====================== */
 
@@ -235,6 +248,7 @@
 
     MODULY.forEach(function (m) { $('modul-' + m.klucz).setAttribute('aria-checked', String(!!u.moduly[m.klucz])); });
     POWIADOMIENIA.forEach(function (p) { $('pow-' + p.klucz).setAttribute('aria-checked', String(!!u.powiadomienia[p.klucz])); });
+    $('dzwiek-minutnika').setAttribute('aria-checked', String(!u.minutnik || u.minutnik.dzwiek !== false));
   }
 
   api.naStan(pokaz);

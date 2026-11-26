@@ -213,11 +213,12 @@
     przechwytuje = v;
     api.ignorujMysz(!v);
   }
-  // w trakcie przewijania trzymamy mysz także poza kształtem — inaczej puszczenie przycisku trafiłoby obok
-  function sprawdzMysz() { ustawPrzechwytywanie(!!przeciaganie || wewnatrz(mysz.x, mysz.y) || wStrefieUpuszczania(mysz.x, mysz.y)); }
+  // w trakcie przewijania (i przytrzymania −/+ minutnika) trzymamy mysz także poza kształtem —
+  // inaczej puszczenie przycisku trafiłoby obok
+  function sprawdzMysz() { ustawPrzechwytywanie(!!przeciaganie || !!przytrzymanie || wewnatrz(mysz.x, mysz.y) || wStrefieUpuszczania(mysz.x, mysz.y)); }
 
   document.addEventListener('mousemove', function (e) { mysz.x = e.clientX; mysz.y = e.clientY; sprawdzMysz(); });
-  document.addEventListener('mouseleave', function () { mysz.x = mysz.y = -1; if (!przeciaganie) ustawPrzechwytywanie(false); });
+  document.addEventListener('mouseleave', function () { mysz.x = mysz.y = -1; if (!przeciaganie && !przytrzymanie) ustawPrzechwytywanie(false); });
 
   /* ====================== stan wyspy ====================== */
 
@@ -227,9 +228,11 @@
   var media = null;
   var przeciaganie = null;             // przewijanie na pasku postępu: { id, klucz, ulamek } albo null
   var timer = null;                    // { koniec: ms, min } albo null
+  var przytrzymanie = null;            // przytrzymany przycisk −/+ minutnika (uchwyt setTimeout) albo null
   var ustawienia = {
     moduly: { muzyka: true, bateria: false, procesor: false, glosnosc: false, timer: false },
-    powiadomienia: { timer: true, bateria: true, glosnosc: true, ladowanie: true }
+    powiadomienia: { timer: true, bateria: true, glosnosc: true, ladowanie: true },
+    minutnik: { dzwiek: true, wlasny: 15 }
   };
   var wysokoscRozw = 200;
 
@@ -293,6 +296,7 @@
     stan = rozwinieta ? 'rozw' : powiadAktywne ? 'powiad' : maKompakt() ? 'kompakt' : 'pusta';
     if (stan !== 'pusta') wcisnieta = false;      // inny stan przejmuje kształt
     if (stan !== 'rozw') koniecPrzewijania(false);   // pasek znika — przewijanie przerwane
+    if (stan !== 'rozw') koniecPrzytrzymania();
 
     wyspa.dataset.stan = stan;
     scena.classList.toggle('cien', stan === 'rozw');     // lekki cień wokół rozwiniętej wyspy
@@ -381,6 +385,7 @@
     powiadAktywne = false;
     clearTimeout(tPowiad);
     ustawTrybTekstu(false, false);                    // po zwinięciu zawsze zaczynamy od zwykłej karty
+    edycjaMinutnika(false);                           // i od gotowych czasów minutnika
     pokazStrone(naStrone === 1 || !maGlowna() ? 1 : 0);
     wysokoscRozw = Math.ceil(rozwEl.offsetHeight);
     aktualizujStan();
@@ -419,7 +424,7 @@
   wyspa.addEventListener('click', function (e) {
     if (!wewnatrz(e.clientX, e.clientY)) return;
     // przyciski, pliki, pasek przewijania i widok tekstu robią swoje, nie zwijają wyspy
-    if (klikZPaska || e.target.closest('button, .sch-plik, .karta.tryb-tekst, .postep.mozna .tor-pole')) return;
+    if (klikZPaska || e.target.closest('button, .sch-plik, .karta.tryb-tekst, .postep.mozna .tor-pole, .minutnik.edycja')) return;
     if (stan === 'rozw') zwin();
     else if (maCoRozwinac()) rozwin();
     else if (stan === 'powiad') { powiadAktywne = false; aktualizujStan(); }
@@ -1162,6 +1167,9 @@
     if (!u || !u.moduly) return;
     ustawienia = u;
     zmienStyl(u.wyglad && u.wyglad.styl === 'notch' ? 'notch' : 'pastylka');
+    // własny czas minutnika (nie nadpisuj, gdy właśnie ustawiany i jeszcze niezapisany)
+    if (!tZapisuWlasnego) wlasnyMin = M.ogranicz(u.minutnik && u.minutnik.wlasny);
+    pokazWlasny();
     var m = u.moduly;
     var jakiKafel = false;
     Array.prototype.forEach.call(document.querySelectorAll('.kafel[data-modul]'), function (k) {
@@ -1195,7 +1203,9 @@
   }
 
   function startTimer(minuty) {
+    edycjaMinutnika(false);
     timer = { koniec: Date.now() + minuty * 60000, min: minuty };
+    api.minutnik(timer.koniec);
     minutnikEl.classList.remove('koniec');
     minutnikEl.classList.add('dziala');
     if (!timerInterwal) timerInterwal = setInterval(tikTimer, 250);
@@ -1205,6 +1215,7 @@
 
   function stopTimer() {
     timer = null;
+    api.minutnik(0);
     clearInterval(timerInterwal);
     timerInterwal = null;
     minutnikEl.classList.remove('dziala');
@@ -1215,6 +1226,8 @@
 
   function zakonczTimer(minuty) {
     stopTimer();
+    // dźwięk ma własny przełącznik; gra także przy ukrytej wyspie (pełny ekran)
+    if (!ustawienia.minutnik || ustawienia.minutnik.dzwiek !== false) window.AtolDzwiek.zagraj();
     if (!ustawienia.powiadomienia.timer) return;      // powiadomienia nie zależą od modułów
     if (rozwinieta) {
       mCzas.textContent = 'Koniec!';
@@ -1229,6 +1242,92 @@
     b.addEventListener('click', function () { startTimer(parseInt(b.dataset.min, 10)); });
   });
   $('m-stop').addEventListener('click', stopTimer);
+
+  /* ---------- własny czas ---------- */
+  var M = window.AtolMinutnik;
+  var mWartosc = $('m-wartosc'), mMniej = $('m-mniej'), mWiecej = $('m-wiecej');
+  var wlasnyMin = M.DOMYSLNY;
+  var tZapisuWlasnego = null;
+  var resztaKolka = 0;
+
+  function pokazWlasny() {
+    mWartosc.textContent = wlasnyMin + ' min';
+    // klasa zamiast "disabled": wyłączony przycisk nie dostaje zdarzeń puszczenia myszy
+    mMniej.classList.toggle('kres', wlasnyMin <= M.MIN);
+    mWiecej.classList.toggle('kres', wlasnyMin >= M.MAKS);
+  }
+
+  function zapiszWlasny() {
+    if (!tZapisuWlasnego) return;
+    clearTimeout(tZapisuWlasnego);
+    tZapisuWlasnego = null;
+    if (ustawienia.minutnik) ustawienia.minutnik.wlasny = wlasnyMin;
+    api.minutnikWlasny(wlasnyMin);
+  }
+
+  function ustawWlasny(minuty) {
+    var nowe = M.ogranicz(minuty);
+    if (nowe === wlasnyMin) return;
+    wlasnyMin = nowe;
+    pokazWlasny();
+    clearTimeout(tZapisuWlasnego);
+    tZapisuWlasnego = setTimeout(zapiszWlasny, 400);     // przy przytrzymaniu nie zapisujemy co krok
+  }
+
+  function edycjaMinutnika(wlacz) {
+    koniecPrzytrzymania();
+    zapiszWlasny();
+    resztaKolka = 0;
+    minutnikEl.classList.toggle('edycja', wlacz);
+  }
+
+  function koniecPrzytrzymania() {
+    if (!przytrzymanie) return;
+    clearTimeout(przytrzymanie);
+    przytrzymanie = null;
+  }
+
+  function przytrzymaj(kierunek) {
+    koniecPrzytrzymania();
+    ustawWlasny(M.przesun(wlasnyMin, kierunek, 1));
+    var n = 0;
+    (function dalej() {
+      var p = M.powtorzenie(n++);
+      przytrzymanie = setTimeout(function () {
+        ustawWlasny(M.przesun(wlasnyMin, kierunek, p.krok));
+        dalej();
+      }, p.po);
+    })();
+  }
+
+  [[mMniej, -1], [mWiecej, 1]].forEach(function (para) {
+    var b = para[0], kierunek = para[1];
+    b.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0) return;
+      try { b.setPointerCapture(e.pointerId); } catch (x) { /* bez przechwycenia też zadziała */ }
+      przytrzymaj(kierunek);
+    });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (typ) {
+      b.addEventListener(typ, function () { koniecPrzytrzymania(); sprawdzMysz(); });
+    });
+    // klawiatura (Enter / spacja) — mysz obsłużył już pointerdown
+    b.addEventListener('click', function (e) { if (e.detail === 0) ustawWlasny(M.przesun(wlasnyMin, kierunek, 1)); });
+  });
+  window.addEventListener('blur', koniecPrzytrzymania);
+
+  // kółko nad edytorem zmienia czas i NIE dochodzi do wyspy (nie przełącza strony)
+  minutnikEl.addEventListener('wheel', function (e) {
+    if (stan !== 'rozw' || !minutnikEl.classList.contains('edycja')) return;
+    e.stopPropagation();
+    var w = M.zKolka(resztaKolka, e.deltaY);
+    resztaKolka = w.reszta;
+    if (w.kroki) ustawWlasny(wlasnyMin + w.kroki);
+  }, { passive: true });
+
+  $('m-wlasny').addEventListener('click', function () { edycjaMinutnika(true); });
+  $('m-wroc').addEventListener('click', function () { edycjaMinutnika(false); });
+  $('m-start').addEventListener('click', function () { startTimer(wlasnyMin); });
+  api.naMinutnikTik(tikTimer);          // budzik z procesu głównego (patrz main.js)
 
   /* ====================== powiadomienia ====================== */
 

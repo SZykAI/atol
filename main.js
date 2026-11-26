@@ -26,6 +26,7 @@ const AKT = require('./lib/aktualizacje');
 const { utworzFiltrGrania } = require('./lib/granie');
 const { utworzFiltrPozycji, moznaPrzewinac } = require('./lib/przewijanie');
 const { utworzTeksty } = require('./lib/tekst');
+const MINUTNIK = require('./lib/minutnik');
 
 // ---------- stałe ----------
 const SZEROKOSC_OKNA_WYSPY = 440;   // okno jest stałe i większe niż pastylka — zmienia się tylko pastylka (CSS)
@@ -282,7 +283,17 @@ function utworzOknoWyspy() {
 
   // Klik gdziekolwiek poza rozwiniętą wyspą: okno traci fokus → zwijamy.
   oknoWyspa.on('blur', () => { if (wyspaRozwinieta) doWyspy('wyspa:zwin'); });
-  oknoWyspa.on('closed', () => { oknoWyspa = null; wyspaRozwinieta = false; odswiezTacke(); doUstawien('panel:stan', stanPanelu()); });
+  oknoWyspa.on('closed', () => { oknoWyspa = null; wyspaRozwinieta = false; ustawBudzikMinutnika(0); odswiezTacke(); doUstawien('panel:stan', stanPanelu()); });
+}
+
+// Minutnik liczy wyspa, ale gdy jest ukryta (pełny ekran), Chromium spowalnia jej timery — nawet do
+// jednego na minutę. Dlatego proces główny pilnuje godziny końca i budzi ją punktualnie.
+let tMinutnika = null;
+function ustawBudzikMinutnika(koniec) {
+  clearTimeout(tMinutnika);
+  const za = koniec - Date.now();
+  if (!(za > 0 && za <= (MINUTNIK.MAKS + 1) * 60000)) return;
+  tMinutnika = setTimeout(() => doWyspy('wyspa:minutnik-tik'), za + 30);
 }
 
 let tUkrycia = null;
@@ -738,6 +749,17 @@ ipcMain.on('wyspa:ignoruj-mysz', (_e, ignoruj) => {
   else oknoWyspa.setIgnoreMouseEvents(false);
 });
 
+ipcMain.on('wyspa:minutnik', (_e, koniec) => ustawBudzikMinutnika(koniec));
+
+// Ostatni własny czas: tylko zapis — wyspa już go zna, nie trzeba rozsyłać ustawień.
+ipcMain.on('wyspa:minutnik-wlasny', (_e, minuty) => {
+  if (!Number.isFinite(minuty)) return;
+  const wlasny = MINUTNIK.ogranicz(minuty);
+  if (wlasny === ustawienia.minutnik.wlasny) return;
+  ustawienia.minutnik.wlasny = wlasny;
+  zapiszUstawienia();
+});
+
 // Schowek: wyspa podaje ścieżki upuszczonych plików (z preload: webUtils.getPathForFile).
 ipcMain.on('wyspa:schowek-dodaj', (_e, sciezki) => {
   if (!ustawienia.moduly.schowek || !Array.isArray(sciezki)) return;
@@ -803,6 +825,13 @@ ipcMain.on('panel:autostart', (_e, wartosc) => {
 ipcMain.on('panel:wyglad', (_e, styl) => {
   if (!U.STYLE.includes(styl)) return;
   ustawienia.wyglad = { styl };
+  zapiszUstawienia();
+  zastosujUstawienia();
+});
+
+ipcMain.on('panel:dzwiek-minutnika', (_e, wartosc) => {
+  if (typeof wartosc !== 'boolean') return;
+  ustawienia.minutnik.dzwiek = wartosc;
   zapiszUstawienia();
   zastosujUstawienia();
 });
