@@ -1,6 +1,6 @@
 {
   "name": "wyspa",
-  "version": "4.2.1",
+  "version": "4.2.2",
   "description": "Atol — dynamiczna wyspa na górze ekranu Windows (muzyka jak w iPhonie, bateria, głośność, procesor, minutnik). Studio SZykAI.",
   "main": "main.js",
   "author": "studio SZykAI",

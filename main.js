@@ -23,6 +23,7 @@ const U = require('./lib/ustawienia');
 const S = require('./lib/schowek');
 const MARKA = require('./lib/marka');
 const AKT = require('./lib/aktualizacje');
+const { utworzFiltrGrania } = require('./lib/granie');
 
 // ---------- stałe ----------
 const SZEROKOSC_OKNA_WYSPY = 440;   // okno jest stałe i większe niż pastylka — zmienia się tylko pastylka (CSS)
@@ -526,6 +527,7 @@ let mediaNiedostepne = false;
 let ostatnioGralo = 0;
 let ostatniaMedia = null;          // ostatni stan wysłany do wyspy (null = nic nie gra)
 let ostatniaOkladka = null;        // okładka przychodzi raz na utwór — pamiętamy ją (np. dla resetu wyspy)
+const filtrGrania = utworzFiltrGrania();   // odsiewa chwilowe, nieaktualne „gra / pauza” z systemu
 
 function sciezkaSkryptu(nazwa) {
   // PowerShell nie odczyta pliku z archiwum asar, więc skrypty są "rozpakowane" obok
@@ -540,18 +542,19 @@ function ustawMedia(stan) {
 function przetworzMedia(s) {
   if (!ustawienia.moduly.muzyka) return;
   if (s.okladkaBlad) dbg('okładka:', s.okladkaBlad);
-  if (!s.aktywna) { if (ostatniaMedia) ustawMedia(null); return; }
+  if (!s.aktywna) { filtrGrania.wyczysc(); if (ostatniaMedia) ustawMedia(null); return; }
 
-  if (s.gra) ostatnioGralo = Date.now();
+  const gra = filtrGrania.odczyt(s.klucz, !!s.gra, Date.now());
+  if (gra) ostatnioGralo = Date.now();
   // pokazujemy, gdy gra; po pauzie jeszcze przez chwilę (żeby dało się wznowić z wyspy)
-  const pokazuj = s.gra || (Date.now() - ostatnioGralo < MEDIA_PAUZA_POKAZUJ_MS);
+  const pokazuj = gra || (Date.now() - ostatnioGralo < MEDIA_PAUZA_POKAZUJ_MS);
   if (!pokazuj) { if (ostatniaMedia) ustawMedia(null); return; }
 
   if (!ostatniaMedia || ostatniaMedia.klucz !== s.klucz) ostatniaOkladka = null;
   if (s.okladka) ostatniaOkladka = s.okladka;
 
   ustawMedia({
-    klucz: s.klucz, gra: !!s.gra, tytul: s.tytul || '', wykonawca: s.wykonawca || '', album: s.album || '',
+    klucz: s.klucz, gra, tytul: s.tytul || '', wykonawca: s.wykonawca || '', album: s.album || '',
     zrodlo: s.zrodlo || '', pozycja: s.pozycja || 0, dlugosc: s.dlugosc || 0,
     poprzedni: !!s.poprzedni, nastepny: !!s.nastepny,
     okladka: ostatniaOkladka || undefined
@@ -671,6 +674,7 @@ ipcMain.on('wyspa:rozwiniecie', (_e, rozwinieta) => {
 ipcMain.on('wyspa:media-komenda', (_e, komenda) => {
   if (!DOZWOLONE_KOMENDY_MEDIA.has(komenda)) return;
   dbg('komenda media:', komenda);
+  if (komenda === 'toggle') filtrGrania.klikniecie(Date.now());
   wyslijDoPomocnika(komenda);
 });
 
