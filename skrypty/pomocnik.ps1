@@ -1,12 +1,14 @@
 ﻿# Wyspa — pomocnik systemowy (Windows PowerShell 5.1), uruchamiany przez proces główny jako proces potomny.
 #
-# Robi cztery rzeczy:
+# Robi pięć rzeczy:
 #  1. MULTIMEDIA: czyta systemową sesję multimediów Windows (GlobalSystemMediaTransportControlsSession,
 #     ta sama, której używa panel multimediów Windows) i nią steruje.
 #  2. PEŁNY EKRAN: sprawdza, czy okno na wierzchu zakrywa cały główny monitor (film, gra, YouTube na pełnym ekranie).
 #  3. GŁOŚNOŚĆ: Core Audio (ten sam mechanizm co suwak głośności Windows) — co 0,1 s, odczyt trwa mikrosekundy.
 #  4. ZASILANIE: GetSystemPowerStatus (poziom baterii, ładowarka podłączona) — co 0,1 s.
 #     (Biblioteki npm robiły to wolno: bateria przez WMI ~0,8 s na odczyt, głośność przez osobny program ~0,1 s.)
+#  5. POZIOM DŹWIĘKU: szczyt sygnału domyślnego urządzenia (IAudioMeterInformation) dla słupków na wyspie —
+#     tylko po komendzie "poziom 1", w każdym obiegu pętli (~15 razy/s).
 #
 # Wyjście (stdout), po jednej linii JSON:
 #   {"typ":"media", ...stan odtwarzania...}     co ~0,5 s (gdy odczyt multimediów jest włączony)
@@ -14,9 +16,11 @@
 #   {"typ":"glosnosc","poziom":0-100,"wyciszony":bool}            tylko przy zmianie (pierwszy odczyt też)
 #   {"typ":"zasilanie","bateria":bool,"procent":0-100,"ladowarka":bool}  tylko przy zmianie (pierwszy odczyt też)
 #   {"typ":"media-niedostepne","powod":"..."}    raz, gdy system nie ma GSMTC (Windows < 10 1809)
+#   {"typ":"poziom","p":0-10000}                 co obieg pętli, tylko gdy włączony (cisza = 0)
 # Wejście (stdin), komendy:
 #   toggle | next | prev       pauza/play, następny, poprzedni
 #   media 0 | media 1          wyłącz / włącz odczyt multimediów (moduł wyłączony w ustawieniach)
+#   poziom 0 | poziom 1        wyłącz (domyślnie) / włącz wysyłanie poziomu dźwięku
 # Gdy stdin się zamknie (aplikacja się zakończyła), skrypt kończy działanie.
 #
 # UWAGA: plik musi być zapisany w UTF-8 z BOM (inaczej PowerShell 5.1 psuje polskie znaki).
@@ -154,12 +158,18 @@ interface IAudioEndpointVolume {
     [PreserveSig] int GetMute(out int wyciszony);
 }
 
+[ComImport, Guid("C02216F6-8C67-4B5B-9D00-D008E73E0064"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IAudioMeterInformation {
+    [PreserveSig] int GetPeakValue(out float szczyt);
+}
+
 [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
 class MMDeviceEnumeratorKlasa { }
 
 public static class WyspaSystem {
     static IMMDeviceEnumerator enumerator;
     static IAudioEndpointVolume glosnosc;
+    static IAudioMeterInformation miernik;
     static DateTime pobrano = DateTime.MinValue;
 
     // Domyślne urządzenie odtwarzania pobieramy ponownie co 3 s — użytkownik mógł przełączyć głośniki/słuchawki.
@@ -173,8 +183,24 @@ public static class WyspaSystem {
             Guid iid = typeof(IAudioEndpointVolume).GUID;
             object o;
             if (urz.Activate(ref iid, 23 /* CLSCTX_ALL */, IntPtr.Zero, out o) == 0) glosnosc = (IAudioEndpointVolume)o;
+            // miernik poziomu tego samego urządzenia (dla słupków) — jego brak nie psuje odczytu głośności
+            try {
+                if (miernik != null) { Marshal.ReleaseComObject(miernik); miernik = null; }
+                Guid iidM = typeof(IAudioMeterInformation).GUID;
+                object om;
+                if (urz.Activate(ref iidM, 23, IntPtr.Zero, out om) == 0) miernik = (IAudioMeterInformation)om;
+            } catch { miernik = null; }
             Marshal.ReleaseComObject(urz);
-        } catch { glosnosc = null; }
+        } catch { glosnosc = null; miernik = null; }
+    }
+
+    // Szczyt sygnału od ostatniej chwili: 0..10000; -1 = brak miernika.
+    public static int Szczyt() {
+        if ((DateTime.Now - pobrano).TotalSeconds > 3) PobierzUrzadzenie();
+        if (miernik == null) return -1;
+        float f;
+        if (miernik.GetPeakValue(out f) != 0) { miernik = null; return -1; }
+        return (int)Math.Round(Math.Max(0f, Math.Min(1f, f)) * 10000);
     }
 
     // Wynik: -1 = brak urządzenia; inaczej poziom 0..100, +1000 gdy wyciszone.
@@ -346,8 +372,14 @@ function OdczytajMedia {
     return $stan
 }
 
+$script:poziomWlaczony = $false
+
 function WykonajKomende($komenda) {
     switch -Regex ($komenda) {
+        '^poziom ([01])$' {
+            $script:poziomWlaczony = ($Matches[1] -eq '1')
+            return
+        }
         '^media ([01])$' {
             $script:mediaWlaczone = ($Matches[1] -eq '1')
             if (-not $script:mediaWlaczone) { $script:ostatniKlucz = '' }   # po włączeniu wyślij okładkę od nowa
@@ -393,10 +425,22 @@ while ($true) {
         if ($null -eq $linia) { break }          # stdin zamknięty → aplikacja zakończyła działanie
         $czytaj = $wejscie.ReadLineAsync()
         try { WykonajKomende $linia.Trim() } catch { }
-        $nastepnyMedia = $zegar.ElapsedMilliseconds + 150   # szybko pokaż skutek komendy
+        # szybko pokaż skutek komendy (włączanie poziomu dźwięku niczego w multimediach nie zmienia)
+        if ($linia -notmatch '^poziom ') { $nastepnyMedia = $zegar.ElapsedMilliseconds + 150 }
     }
 
     $teraz = $zegar.ElapsedMilliseconds
+
+    # Poziom dźwięku: w każdym obiegu, bez ConvertTo-Json (zbędny koszt przy ~15 liniach na sekundę)
+    if ($script:poziomWlaczony -and $script:systemDostepny) {
+        try {
+            $p = [WyspaSystem]::Szczyt()
+            if ($p -ge 0) {
+                [Console]::Out.WriteLine('{"typ":"poziom","p":' + $p + '}')
+                [Console]::Out.Flush()
+            }
+        } catch { }
+    }
 
     if ($script:pelnyDostepny -and $teraz -ge $nastepnyPelny) {
         $nastepnyPelny = $teraz + 250

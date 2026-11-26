@@ -780,8 +780,11 @@
   }
 
   /* ====================== wizualizator ====================== */
-  // Słupki to animacja (system nie udostępnia widma dźwięku). Gdy gra — każdy co chwilę losuje nową
-  // wysokość i płynnie do niej dąży; gdy pauza — wszystkie płynnie opadają.
+  // Gdy gra, słupki idą za prawdziwym poziomem dźwięku z pomocnika (lib/poziom.js). Bez świeżych danych
+  // (stary albo niedziałający pomocnik) to animacja: każdy co chwilę losuje nową wysokość i płynnie do niej
+  // dąży. Gdy pauza — wszystkie płynnie opadają.
+
+  var poziom = window.AtolPoziom.utworz();
 
   var vizSlupki = [].slice.call(document.querySelectorAll('#k-viz i')).map(function (k, i) {
     return { el: [k, document.querySelectorAll('#r-viz i')[i]], x: 0.18, cel: 0.18, nast: 0 };
@@ -793,8 +796,11 @@
   function krokWizualizatora(dt, t) {
     if (!media || sV.cel === 0) return false;
     var ruch = false;
+    var zDzwieku = vizGra && poziom.swiezy(performance.now());
     vizSlupki.forEach(function (s, i) {
-      if (vizGra) {
+      if (zDzwieku) {
+        s.cel = poziom.cel(i);
+      } else if (vizGra) {
         if (t >= s.nast) {
           s.cel = 0.22 + Math.random() * 0.78 * PROFIL[i];
           s.nast = t + 110 + Math.random() * 190;
@@ -802,8 +808,8 @@
       } else {
         s.cel = 0.18;
       }
-      var szybkosc = vizGra ? 15 : 6;
-      s.x += (s.cel - s.x) * (1 - Math.exp(-dt * szybkosc));
+      if (zDzwieku) s.x = window.AtolPoziom.krok(s.x, s.cel, dt);
+      else s.x += (s.cel - s.x) * (1 - Math.exp(-dt * (vizGra ? 15 : 6)));
       if (Math.abs(s.cel - s.x) > 0.002) ruch = true;
       var tr = 'scaleY(' + s.x.toFixed(3) + ')';
       s.el[0].style.transform = tr;
@@ -1380,6 +1386,7 @@
   api.naUstawienia(naUstawienia);
   api.naDane(naDane);
   api.naMedia(naMedia);
+  api.naPoziom(function (p) { poziom.odczyt(p, performance.now()); });   // pętla animacji i tak działa, gdy gra
   api.naTekst(naTekst);
   api.naPowiadomienie(pokazPowiadomienie);
   api.naSchowek(naSchowek);

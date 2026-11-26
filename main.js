@@ -304,6 +304,7 @@ function ustawPelnyEkran(wartosc) {
   if (pelnyEkran === wartosc) return;
   pelnyEkran = wartosc;
   dbg('pełny ekran:', wartosc);
+  odswiezPoziom();
   if (!zyje(oknoWyspa)) return;
   clearTimeout(tUkrycia);
   if (wartosc) {
@@ -552,7 +553,20 @@ function sciezkaSkryptu(nazwa) {
 function ustawMedia(stan) {
   ostatniaMedia = stan;
   doWyspy('wyspa:media', stan);
+  odswiezPoziom();
   odswiezTekst();
+}
+
+// Poziom dźwięku dla słupków pomocnik czyta i wysyła (~15 razy/s) tylko wtedy, gdy słupki są widoczne i coś gra.
+let poziomWlaczony = false;        // ostatnio wysłane do pomocnika (nowy pomocnik startuje z wyłączonym)
+
+function odswiezPoziom() {
+  const potrzebny = !!(pomocnik && zyje(oknoWyspa) && !pelnyEkran && ustawienia.moduly.muzyka
+    && ostatniaMedia && ostatniaMedia.gra);
+  if (potrzebny === poziomWlaczony) return;
+  poziomWlaczony = potrzebny;
+  dbg('poziom dźwięku:', potrzebny);
+  wyslijDoPomocnika('poziom ' + (potrzebny ? 1 : 0));
 }
 
 /* ----- tekst piosenki (lib/tekst.js, lrclib.net) — tylko przy włączonych modułach „muzyka” i „tekst” ----- */
@@ -620,6 +634,7 @@ function przetworzLiniePomocnika(linia) {
   switch (s.typ) {
     case 'media': przetworzMedia(s); break;
     case 'pelny': ustawPelnyEkran(!!s.wartosc); break;
+    case 'poziom': if (!pelnyEkran) doWyspy('wyspa:poziom', s.p / 10000); break;
     case 'glosnosc':
       zPomocnika.glosnosc = s.brak ? null : { poziom: s.poziom, wyciszony: !!s.wyciszony };
       if (U.potrzebaGlosnosci(ustawienia)) nowyOdczyt(ostatnieDane.bateria, zPomocnika.glosnosc);
@@ -660,6 +675,7 @@ function uruchomPomocnika() {
     return;
   }
   pomocnik = proces;
+  poziomWlaczony = false;
   const start = Date.now();
   pomocnikCzasStartu = start;
   // niższy priorytet: przy dużym obciążeniu Windows najpierw obsłuży Twoje programy, a dopiero potem pomocnika

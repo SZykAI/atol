@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('wyspa', {
   mediaKomenda: (komenda) => ipcRenderer.send('wyspa:media-komenda', String(komenda)),
   mediaPrzewin: (sekundy, klucz) => ipcRenderer.send('wyspa:media-przewin', Number(sekundy), String(klucz)),
   naTekst: nasluch('wyspa:tekst'),                           // tekst piosenki (albo „szukam” / null)
+  naPoziom: nasluch('wyspa:poziom'),                         // poziom dźwięku 0..1 dla słupków (~15 razy/s)
 
   // minutnik: proces główny budzi wyspę o godzinie końca (timery ukrytego okna są spowalniane)
   minutnik: (koniec) => ipcRenderer.send('wyspa:minutnik', Number(koniec)),       // 0 = zatrzymany
