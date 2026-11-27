@@ -13,3 +13,7 @@ reklama/promo-42*/podglad/
 reklama/promo-42*/*.wav
 reklama/promo-42*/*.log
 reklama/promo-42*/node_modules/
+# w repozytorium tylko to, co potrzebne do aplikacji (notatki, reklamy i agenci zostaja lokalnie)
+POSTEP.md
+.claude/
+reklama/
